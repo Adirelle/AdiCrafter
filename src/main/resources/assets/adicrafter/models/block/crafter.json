@@ -1,0 +1,12 @@
+{
+    "parent": "minecraft:block/cube",
+    "textures": {
+        "particle": "adicrafter:block/crafter_front",
+        "north": "adicrafter:block/crafter_front",
+        "south": "adicrafter:block/crafter_side",
+        "east": "adicrafter:block/crafter_side",
+        "west": "adicrafter:block/crafter_front",
+        "up": "adicrafter:block/crafter_top",
+        "down": "minecraft:block/iron_block"
+    }
+}

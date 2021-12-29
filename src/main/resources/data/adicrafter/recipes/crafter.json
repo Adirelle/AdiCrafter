@@ -1,0 +1,25 @@
+{
+    "type": "minecraft:crafting_shaped",
+    "pattern": [
+        "RHR",
+        "HTH",
+        "RPR"
+    ],
+    "key": {
+        "T": {
+            "tag": "c:crafting_tables"
+        },
+        "H": {
+            "tag": "c:hoppers"
+        },
+        "R": {
+            "tag": "c:redstone_dusts"
+        },
+        "P": {
+            "item": "minecraft:piston"
+        }
+    },
+    "result": {
+        "item": "adicrafter:crafter"
+    }
+}
