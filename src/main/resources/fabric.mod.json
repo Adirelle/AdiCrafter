@@ -1,0 +1,36 @@
+{
+    "schemaVersion": 1,
+    "id": "adicrafter",
+    "version": "${version}",
+    "name": "AdiCrafter",
+    "description": "Adirelle's automated crafter",
+    "authors": [
+        "Adirelle"
+    ],
+    "contact": {
+        "homepage": "https://github.com/Adirelle/AdiCrafter",
+        "issues": "https://github.com/Adirelle/AdiCrafter/issues",
+        "sources": "https://github.com/Adirelle/AdiCrafter"
+    },
+    "license": "GNU Lesser General Public License version 3 (LGPLv3)",
+    "icon": "assets/adicrafter/icon.png",
+    "environment": "*",
+    "entrypoints": {
+        "main": [
+            {
+                "adapter": "kotlin",
+                "value": "dev.adirelle.adicrafter.AdiCrafter"
+            }
+        ]
+    },
+    "mixins": [
+        "adicrafter.mixins.json"
+    ],
+    "depends": {
+        "fabricloader": ">=0.12.12",
+        "fabric": "*",
+        "fabric-language-kotlin": ">=1.7.1+kotlin.1.6.10",
+        "minecraft": "1.18.x",
+        "java": ">=17"
+    }
+}
