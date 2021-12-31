@@ -19,7 +19,12 @@ group = mavenGroup
 
 minecraft {}
 
-repositories {}
+repositories {
+    maven {
+        name = "CottonMC"
+        url = uri("https://server.bbkr.space/artifactory/libs-release")
+    }
+}
 
 dependencies {
     minecraft("com.mojang:minecraft:$minecraftVersion")
@@ -35,6 +40,10 @@ dependencies {
 
     val fabricKotlinVersion: String by project
     modImplementation("net.fabricmc:fabric-language-kotlin:$fabricKotlinVersion")
+
+    val libGuiVersion: String by project
+    modImplementation("io.github.cottonmc:LibGui:$libGuiVersion")
+    include("io.github.cottonmc:LibGui:$libGuiVersion")
 }
 
 tasks {
