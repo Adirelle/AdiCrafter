@@ -8,7 +8,6 @@ import net.fabricmc.fabric.api.`object`.builder.v1.block.FabricBlockSettings
 import net.fabricmc.fabric.api.`object`.builder.v1.block.entity.FabricBlockEntityTypeBuilder
 import net.fabricmc.fabric.api.item.v1.FabricItemSettings
 import net.fabricmc.fabric.api.screenhandler.v1.ScreenHandlerRegistry
-import net.minecraft.block.Material
 import net.minecraft.item.BlockItem
 import net.minecraft.item.ItemGroup
 import net.minecraft.screen.ScreenHandlerType
@@ -23,7 +22,7 @@ object AdiCrafter : ModInitializer {
     const val MOD_ID = "adicrafter"
 
     val CRAFTER_ID = Identifier(MOD_ID, "crafter")
-    val CRAFTER_BLOCK = CrafterBlock(FabricBlockSettings.of(Material.METAL).strength(4.0f))
+    val CRAFTER_BLOCK = CrafterBlock()
     val CRAFTER_ITEM = BlockItem(CRAFTER_BLOCK, FabricItemSettings().group(ItemGroup.REDSTONE))
     val CRAFTER_BLOCK_ENTITY = FabricBlockEntityTypeBuilder.create(::CrafterBlockEntity, CRAFTER_BLOCK).build()!!
     lateinit var CRAFTER_SCREEN_HANDLER: ScreenHandlerType<CrafterScreenHandler>

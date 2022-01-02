@@ -1,8 +1,11 @@
 package dev.adirelle.adicrafter.block
 
 import dev.adirelle.adicrafter.blockentity.CrafterBlockEntity
+import net.fabricmc.fabric.api.`object`.builder.v1.block.FabricBlockSettings
+import net.minecraft.block.BlockRenderType
 import net.minecraft.block.BlockState
 import net.minecraft.block.BlockWithEntity
+import net.minecraft.block.Material
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.util.ActionResult
@@ -11,8 +14,11 @@ import net.minecraft.util.hit.BlockHitResult
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 
-
-class CrafterBlock(settings: Settings) : BlockWithEntity(settings) {
+class CrafterBlock : BlockWithEntity(
+    FabricBlockSettings
+        .of(Material.METAL)
+        .strength(4.0f)
+) {
 
     override fun createBlockEntity(pos: BlockPos, state: BlockState): BlockEntity =
         CrafterBlockEntity(pos, state)
@@ -30,4 +36,6 @@ class CrafterBlock(settings: Settings) : BlockWithEntity(settings) {
         }
         return ActionResult.SUCCESS
     }
+
+    override fun getRenderType(state: BlockState?) = BlockRenderType.MODEL
 }
