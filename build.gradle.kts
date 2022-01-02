@@ -46,6 +46,15 @@ dependencies {
     include("io.github.cottonmc:LibGui:$libGuiVersion")
 }
 
+loom {
+    runs {
+        getByName("client").apply {
+            property("fabric.log.level", "info")
+            property("fabric.log.debug.level", "debug")
+        }
+    }
+}
+
 tasks {
     val javaVersion = JavaVersion.VERSION_17
 
