@@ -3,8 +3,8 @@ package dev.adirelle.adicrafter
 import dev.adirelle.adicrafter.block.CrafterBlock
 import dev.adirelle.adicrafter.blockentity.CrafterBlockEntity
 import dev.adirelle.adicrafter.screen.CrafterScreenHandler
+import dev.adirelle.adicrafter.utils.lazyLogger
 import net.fabricmc.api.ModInitializer
-import net.fabricmc.fabric.api.`object`.builder.v1.block.FabricBlockSettings
 import net.fabricmc.fabric.api.`object`.builder.v1.block.entity.FabricBlockEntityTypeBuilder
 import net.fabricmc.fabric.api.item.v1.FabricItemSettings
 import net.fabricmc.fabric.api.screenhandler.v1.ScreenHandlerRegistry
@@ -13,11 +13,11 @@ import net.minecraft.item.ItemGroup
 import net.minecraft.screen.ScreenHandlerType
 import net.minecraft.util.Identifier
 import net.minecraft.util.registry.Registry
-import org.apache.logging.log4j.LogManager
 
 @Suppress("UNUSED")
 object AdiCrafter : ModInitializer {
-    private val LOGGER = LogManager.getLogger()!!
+
+    private val logger by lazyLogger()
 
     const val MOD_ID = "adicrafter"
 
@@ -39,6 +39,6 @@ object AdiCrafter : ModInitializer {
 //            CRAFTER_BLOCK_ENTITY
 //        )
 
-        LOGGER.info("$MOD_ID initialized!")
+        logger.info("$MOD_ID initialized!")
     }
 }
