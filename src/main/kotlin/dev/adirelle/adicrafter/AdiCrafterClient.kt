@@ -16,7 +16,6 @@ object AdiCrafterClient : ClientModInitializer {
 
     override fun onInitializeClient() {
         ScreenRegistry.register(CRAFTER_SCREEN_HANDLER, ::CrafterScreen)
-
         logger.info("${AdiCrafter.MOD_ID} client initialized!")
     }
 }

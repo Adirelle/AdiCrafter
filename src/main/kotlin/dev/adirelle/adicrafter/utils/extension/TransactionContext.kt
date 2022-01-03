@@ -19,6 +19,5 @@ inline fun <T> transactional(txc: TransactionContext?, crossinline block: (Trans
         logger.info("opening tx #{}", tx.nestingDepth())
         tx.addCloseCallback { t, r -> logger.info("closing tx #{}: {}", t.nestingDepth(), r) }
         val result = block(tx)
-        tx.commit()
         result
     }
