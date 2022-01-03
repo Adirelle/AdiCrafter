@@ -24,20 +24,23 @@ object AdiCrafter : ModInitializer {
     val CRAFTER_ID = Identifier(MOD_ID, "crafter")
     val CRAFTER_BLOCK = CrafterBlock()
     val CRAFTER_ITEM = BlockItem(CRAFTER_BLOCK, FabricItemSettings().group(ItemGroup.REDSTONE))
-    val CRAFTER_BLOCK_ENTITY = FabricBlockEntityTypeBuilder.create(::CrafterBlockEntity, CRAFTER_BLOCK).build()!!
+    val CRAFTER_BLOCK_ENTITY =
+        FabricBlockEntityTypeBuilder.create(::CrafterBlockEntity, CRAFTER_BLOCK).build()!!
     lateinit var CRAFTER_SCREEN_HANDLER: ScreenHandlerType<CrafterScreenHandler>
 
     override fun onInitialize() {
         Registry.register(Registry.BLOCK, CRAFTER_ID, CRAFTER_BLOCK)
         Registry.register(Registry.ITEM, CRAFTER_ID, CRAFTER_ITEM)
         Registry.register(Registry.BLOCK_ENTITY_TYPE, CRAFTER_ID, CRAFTER_BLOCK_ENTITY)
-        CRAFTER_SCREEN_HANDLER = ScreenHandlerRegistry.registerSimple(CRAFTER_ID, ::CrafterScreenHandler)!!
+        CRAFTER_SCREEN_HANDLER =
+            ScreenHandlerRegistry.registerSimple(CRAFTER_ID, ::CrafterScreenHandler)!!
 
-//        @Suppress("UnstableApiUsage")
-//        ItemStorage.SIDED.registerForBlockEntity(
-//            { entity, direction -> entity?.let { InventoryStorage.of(it.inventory, direction) } },
-//            CRAFTER_BLOCK_ENTITY
-//        )
+        //        @Suppress("UnstableApiUsage")
+        //        ItemStorage.SIDED.registerForBlockEntity(
+        //            { entity, direction -> entity?.let { InventoryStorage.of(it.inventory,
+        // direction) } },
+        //            CRAFTER_BLOCK_ENTITY
+        //        )
 
         logger.info("$MOD_ID initialized!")
     }

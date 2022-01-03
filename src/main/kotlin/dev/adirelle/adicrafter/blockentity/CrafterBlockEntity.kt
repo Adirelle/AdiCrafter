@@ -22,8 +22,7 @@ import net.minecraft.util.registry.Registry
 
 @Suppress("UnstableApiUsage")
 class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
-    BlockEntity(CRAFTER_BLOCK_ENTITY, pos, state),
-    NamedScreenHandlerFactory {
+    BlockEntity(CRAFTER_BLOCK_ENTITY, pos, state), NamedScreenHandlerFactory {
 
     companion object {
 
@@ -48,15 +47,13 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
     override fun createMenu(syncId: Int, playerInventory: PlayerInventory, player: PlayerEntity) =
         CrafterScreenHandler(syncId, playerInventory, this)
 
-    override fun getDisplayName(): Text =
-        TranslatableText("block.adicrafter.crafter")
+    override fun getDisplayName(): Text = TranslatableText("block.adicrafter.crafter")
 
     override fun readNbt(nbt: NbtCompound) {
         super.readNbt(nbt)
         config = Config.fromNbt(nbt)
         buffer = ItemStack.fromNbt(nbt.getCompound(BUFFER_NBT_KEY))
         output = ItemStack.fromNbt(nbt.getCompound(OUTPUT_NBT_KEY))
-        logger.info("read from NBT: {}, {}, {}", config, buffer, output)
     }
 
     override fun writeNbt(nbt: NbtCompound) {
@@ -64,38 +61,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         config.writeNbt(nbt)
         nbt.put(BUFFER_NBT_KEY, NbtCompound().apply { buffer.writeNbt(this) })
         nbt.put(OUTPUT_NBT_KEY, NbtCompound().apply { output.writeNbt(this) })
-        logger.info("writting to NBT: {}, {}, {}", config, buffer, output)
     }
-
-//    @Environment(SERVER)
-//    private fun updateRecipe() {
-//        logger.info("updating recipe, grid: {}, isClient? {}", grid, world?.isClient)
-//        val world = this.world ?: return
-//
-//        val craftingGrid by lazy {
-//            val dummy = object : ScreenHandler(null, 0) {
-//                override fun canUse(player: PlayerEntity) = false
-//            }
-//            CraftingInventory(dummy, 3, 3)
-//        }
-//
-//        craftingGrid.clear()
-//        for (slot in 0 until craftingGrid.size()) {
-//            craftingGrid.setStack(slot, grid.getStack(slot))
-//        }
-//
-//        world.recipeManager
-//            .getFirstMatch(RecipeType.CRAFTING, craftingGrid, world)
-//            .ifPresentOrElse(
-//                { recipe ->
-//                    logger.info("found recipe: {}", recipe.id)
-//                    result.stack = recipe.output.copy()
-//                }, {
-//                    logger.info("no recipe found")
-//                    result.stack = EMPTY
-//                }
-//            )
-//    }
 
     data class Config(
         val recipeId: Identifier,
@@ -113,11 +79,12 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
             fun fromNbt(nbt: NbtCompound) =
                 try {
                     val recipeId = Identifier(nbt.getString(RECIPE_NBT_KEY))
-                    val grid = nbt.getList(GRID_NBT_KEY, NbtType.COMPOUND)
-                        .filterIsInstance(NbtCompound::class.java)
-                        .map { ItemStack.fromNbt(it) }
-                        .subList(0, 9)
-                        .toTypedArray()
+                    val grid =
+                        nbt.getList(GRID_NBT_KEY, NbtType.COMPOUND)
+                            .filterIsInstance(NbtCompound::class.java)
+                            .map { ItemStack.fromNbt(it) }
+                            .subList(0, 9)
+                            .toTypedArray()
                     val result = ItemStack.fromNbt(nbt.getCompound(RESULT_NBT_KEY))
                     Config(recipeId, grid, result)
                 } catch (e: Exception) {
@@ -128,92 +95,26 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
         fun writeNbt(nbt: NbtCompound): NbtCompound {
             nbt.putIdentifier(RECIPE_NBT_KEY, recipeId)
-            nbt.put(GRID_NBT_KEY, NbtList().also { list ->
-                grid.forEach { item ->
-                    list.add(NbtCompound().also { item.writeNbt(it) })
+            nbt.put(
+                GRID_NBT_KEY,
+                NbtList().also { list ->
+                    grid.forEach { item -> list.add(NbtCompound().also { item.writeNbt(it) }) }
                 }
-            })
+            )
             nbt.put(RESULT_NBT_KEY, NbtCompound().also { result.writeNbt(it) })
             return nbt
         }
 
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
-            if (javaClass != other?.javaClass) return false
-
-            other as Config
-
-            if (recipeId != other.recipeId) return false
-            if (!grid.contentEquals(other.grid)) return false
-            if (result != other.result) return false
-
-            return true
+            if (other?.javaClass != this.javaClass) return false
+            return (other as Config).let {
+                recipeId == it.recipeId
+                    && grid.contentEquals(it.grid)
+                    && result == it.result
+            }
         }
 
-        override fun hashCode(): Int {
-            var result1 = recipeId.hashCode()
-            result1 = 31 * result1 + grid.hashCode()
-            result1 = 31 * result1 + result.hashCode()
-            return result1
-        }
+        override fun hashCode() = recipeId.hashCode() + 31 * (grid.hashCode() + 31 * (result.hashCode()))
     }
-
-/*
-private class BufferedStorage(
-    val buffer: Storage<ItemVariant>,
-    val upstream: Storage<ItemVariant>
-) : SingleVariantStorage<ItemVariant>() {
-
-    override fun getCapacity(variant: ItemVariant) =
-        variant.item.maxCount.toLong()
-
-    override fun getBlankVariant(): ItemVariant =
-        ItemVariant.blank()
-
-    override fun extract(resource: ItemVariant, maxAmount: Long, tx: TransactionContext?): Long {
-        var extracted = buffer.extract(resource, maxAmount, tx)
-        if (extracted < maxAmount) {
-            extracted += upstream.extract(resource, maxAmount - extracted, tx)
-        }
-        if (extracted > maxAmount) {
-            extracted -= buffer.insert(resource, extracted - maxAmount, tx)
-        }
-        return extracted
-    }
-
-    override fun insert(resource: ItemVariant, maxAmount: Long, tx: TransactionContext?) =
-        buffer.insert(resource, maxAmount, tx)
-}
-
-private inner class CraftingStorage : SingleVariantStorage<ItemVariant>() {
-
-    override fun extract(resource: ItemVariant, maxAmount: Long, transaction: TransactionContext?): Long {
-        if (resource != this.resource || maxAmount < 1) return 0
-        var crafted = 0L
-        while (crafted < maxAmount) {
-            // TODO: search and consume ingredients
-            crafted += amount
-        }
-        return crafted
-    }
-
-    override fun getCapacity(variant: ItemVariant) =
-        result.maxCountPerStack.toLong()
-
-    override fun getBlankVariant(): ItemVariant =
-        ItemVariant.blank()
-
-    override fun getResource(): ItemVariant =
-        if (result.isEmpty) blankVariant else ItemVariant.of(result.getStack(0))
-
-    override fun getAmount() =
-        result.getStack(0).count.toLong()
-
-    override fun supportsInsertion() =
-        false
-
-    override fun insert(variant: ItemVariant?, maxAmount: Long, transaction: TransactionContext?) =
-        0L
-}
-*/
 }
