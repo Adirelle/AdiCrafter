@@ -8,12 +8,14 @@ fun lazyLogger(name: Any? = null) = LazyLogger(name)
 
 class LazyLogger(private val name: Any?) {
 
+    private var logger: Logger? = null
+
     operator fun <T> getValue(thisRef: T, property: KProperty<*>): Logger {
-        val logger by lazy {
-            if (name is String) LogManager.getLogger(name)
-            else LogManager.getLogger(name ?: thisRef)
+        if (logger == null) {
+            logger =
+                if (name is String) LogManager.getLogger(name)
+                else LogManager.getLogger(name ?: thisRef)
         }
-        return logger
+        return logger!!
     }
 }
-

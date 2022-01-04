@@ -34,7 +34,8 @@ interface SidedModInitalizer : ModInitializer, ClientModInitializer, DedicatedSe
 
     val LOGGER: Logger
 
-    override fun onInitialize() {}
+    override fun onInitialize() {
+    }
 
     @Environment(CLIENT)
     override fun onInitializeClient() {
@@ -47,25 +48,41 @@ interface SidedModInitalizer : ModInitializer, ClientModInitializer, DedicatedSe
 
 open class Mod(val MOD_ID: String) : SidedModInitalizer {
 
-    override val LOGGER by lazy { LogManager.getLogger(MOD_ID)!! }
+    final override val LOGGER = LogManager.getLogger(MOD_ID)!!
+
+    init {
+        LOGGER.debug("initializing $MOD_ID")
+    }
 
     fun feature(feature: ModFeature) {
         feature.onInitialize()
+
+        @Suppress("USELESS_IS_CHECK")
         if (feature is ClientModInitializer) {
             feature.onInitializeClient()
         }
+
+        @Suppress("USELESS_IS_CHECK")
         if (feature is DedicatedServerModInitializer) {
             feature.onInitializeServer()
         }
-        LOGGER.info("feature ${feature.ID} initialized")
+
+        LOGGER.debug("feature $feature initialized")
     }
+
+    override fun toString() = MOD_ID
 }
 
 open class ModFeature(mod: Mod, val NAME: String) : SidedModInitalizer {
 
     override val LOGGER by lazy { LogManager.getLogger("${MOD_ID}:${NAME}")!! }
+
     val MOD_ID = mod.MOD_ID
     val ID = Identifier(MOD_ID, NAME)
+
+    init {
+        LOGGER.debug("initializing feature ${ID}")
+    }
 
     fun <T : Block> register(entry: T, id: Identifier = ID): Block =
         Registry.BLOCK.register(id, entry)
@@ -108,4 +125,6 @@ open class ModFeature(mod: Mod, val NAME: String) : SidedModInitalizer {
 
     private fun <T> Registry<T>.register(id: Identifier, entry: T): T =
         Registry.register(this, id, entry)
+
+    override fun toString() = ID.toString()
 }

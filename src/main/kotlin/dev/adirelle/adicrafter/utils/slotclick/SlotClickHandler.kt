@@ -11,12 +11,12 @@ interface SlotClickHandler : Inventory {
         return false
     }
 
-    fun Inventory.handleSlotClick(slot: Slot, button: Int, actionType: SlotActionType, player: PlayerEntity) =
-        (this as? SlotClickHandler)?.handleSlotClick(slot, button, actionType, player) ?: false
-
     abstract class Abstract<T : Inventory>(
         protected val backing: T
     ) :
         Inventory by backing,
         SlotClickHandler
 }
+
+fun Inventory.handleSlotClick(slot: Slot, button: Int, actionType: SlotActionType, player: PlayerEntity) =
+    (this as? SlotClickHandler)?.handleSlotClick(slot, button, actionType, player) ?: false
