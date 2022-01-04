@@ -25,7 +25,13 @@
         "client": [
             {
                 "adapter": "kotlin",
-                "value": "dev.adirelle.adicrafter.AdiCrafterClient"
+                "value": "dev.adirelle.adicrafter.AdiCrafter"
+            }
+        ],
+        "server": [
+            {
+                "adapter": "kotlin",
+                "value": "dev.adirelle.adicrafter.AdiCrafter"
             }
         ]
     },

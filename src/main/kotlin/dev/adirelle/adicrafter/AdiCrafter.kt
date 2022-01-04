@@ -1,21 +1,11 @@
 package dev.adirelle.adicrafter
 
 import dev.adirelle.adicrafter.crafter.Crafter
-import dev.adirelle.adicrafter.utils.mod.mod
+import dev.adirelle.adicrafter.utils.mod.Mod
 
-val AdiCrafter = mod("adicrafter") {
+object AdiCrafter : Mod("adicrafter") {
 
-    LOGGER.info("I was at places!")
-
-    clientOnly {
-        LOGGER.info("I was on the client!")
-    }
-
-    serverOnly {
-        LOGGER.info("I was on the server!")
-    }
-
-    features {
-        Crafter
+    override fun onInitialize() {
+        feature(Crafter)
     }
 }

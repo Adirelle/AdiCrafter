@@ -3,10 +3,9 @@
 package dev.adirelle.adicrafter.utils.mod
 
 import com.mojang.datafixers.types.Type
+import net.fabricmc.api.*
 import net.fabricmc.api.EnvType.CLIENT
 import net.fabricmc.api.EnvType.SERVER
-import net.fabricmc.api.EnvironmentInterface
-import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.client.screenhandler.v1.ScreenRegistry
 import net.fabricmc.fabric.api.item.v1.FabricItemSettings
 import net.fabricmc.fabric.api.screenhandler.v1.ScreenHandlerRegistry
@@ -29,89 +28,59 @@ import net.minecraft.util.registry.Registry
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 
+@EnvironmentInterface(CLIENT, itf = ClientModInitializer::class)
+@EnvironmentInterface(SERVER, itf = DedicatedServerModInitializer::class)
+interface SidedModInitalizer : ModInitializer, ClientModInitializer, DedicatedServerModInitializer {
 
-interface ClientSide
-
-interface ServerSide
-
-interface ModInit {
-
-    val MOD_ID: String
     val LOGGER: Logger
-}
 
-@EnvironmentInterface(CLIENT, itf = ClientSide::class)
-@EnvironmentInterface(SERVER, itf = ServerSide::class)
-interface ModSidedInit : ModInit {
+    override fun onInitialize() {}
 
-    fun serverOnly(block: ModInit.() -> Unit) {
-        if (this is ServerSide) {
-            this.block()
-        }
+    @Environment(CLIENT)
+    override fun onInitializeClient() {
     }
 
-    fun clientOnly(block: ModInit.() -> Unit) {
-        if (this is ClientSide) {
-            this.block()
-        }
+    @Environment(SERVER)
+    override fun onInitializeServer() {
     }
 }
 
-interface Mod : ModSidedInit, ModInitializer {
+open class Mod(val MOD_ID: String) : SidedModInitalizer {
 
-    fun features(block: () -> Unit) {
-        LOGGER.info("loading features")
-        block()
-        LOGGER.info("features loaded")
+    override val LOGGER by lazy { LogManager.getLogger(MOD_ID)!! }
+
+    fun feature(feature: ModFeature) {
+        feature.onInitialize()
+        if (feature is ClientModInitializer) {
+            feature.onInitializeClient()
+        }
+        if (feature is DedicatedServerModInitializer) {
+            feature.onInitializeServer()
+        }
+        LOGGER.info("feature ${feature.ID} initialized")
     }
 }
 
-//inline fun ModSidedInit.serverOnly(crossinline block: ModInit.() -> Unit) {
-//    if (this is ClientSide) {
-//        this.block()
-//    }
-//}
-//
-//inline fun ModSidedInit.clientOnly(crossinline block: ModInit.() -> Unit) {
-//    if (this is ClientSide) {
-//        this.block()
-//    }
-//}
+open class ModFeature(mod: Mod, val NAME: String) : SidedModInitalizer {
 
-inline fun mod(MOD_ID: String, crossinline block: Mod.() -> Unit): Mod =
-    object : Mod {
-        override val LOGGER by lazy { LogManager.getLogger(MOD_ID)!! }
-        override val MOD_ID = MOD_ID
-
-        override fun onInitialize() {
-            LOGGER.info("initializing $MOD_ID")
-            block(this)
-            serverOnly { LOGGER.info("$MOD_ID initialized on server") }
-            clientOnly { LOGGER.info("$MOD_ID initialized on client") }
-            LOGGER.info("$MOD_ID initialized")
-        }
-    }
-
-open class ModFeature(mod: ModInit, val NAME: String) : ModSidedInit {
-
-    final override val LOGGER by lazy { LogManager.getLogger("${MOD_ID}:${NAME}")!! }
-    final override val MOD_ID = mod.MOD_ID
+    override val LOGGER by lazy { LogManager.getLogger("${MOD_ID}:${NAME}")!! }
+    val MOD_ID = mod.MOD_ID
     val ID = Identifier(MOD_ID, NAME)
 
-    fun <T : Block> register(entry: T, id: Identifier = ID) =
+    fun <T : Block> register(entry: T, id: Identifier = ID): Block =
         Registry.BLOCK.register(id, entry)
 
-    fun <T : Item> register(entry: T, id: Identifier = ID) =
+    fun <T : Item> register(entry: T, id: Identifier = ID): Item =
         Registry.ITEM.register(id, entry)
 
     inline fun <T : Block> registerItemFor(
         block: T,
         crossinline settings: FabricItemSettings.() -> FabricItemSettings
     ) =
-        register(BlockItem(block, FabricItemSettings().settings()))!!
+        register(BlockItem(block, FabricItemSettings().settings()))
 
     fun <T : Block> registerItemFor(block: T) =
-        register(BlockItem(block, FabricItemSettings()))!!
+        register(BlockItem(block, FabricItemSettings()))
 
     fun <T : BlockEntity, S : T> register(
         factory: (BlockPos, BlockState) -> T,
