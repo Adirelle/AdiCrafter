@@ -1,4 +1,4 @@
-package dev.adirelle.adicrafter.screen.slotclick
+package dev.adirelle.adicrafter.utils.slotclick
 
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.inventory.Inventory
@@ -20,4 +20,3 @@ interface SlotClickHandler : Inventory {
         Inventory by backing,
         SlotClickHandler
 }
-

@@ -1,14 +1,12 @@
 @file:Suppress("UnstableApiUsage")
 
-package dev.adirelle.adicrafter.screen
+package dev.adirelle.adicrafter.crafter
 
-import dev.adirelle.adicrafter.AdiCrafter.CRAFTER_SCREEN_HANDLER
-import dev.adirelle.adicrafter.blockentity.CrafterBlockEntity
-import dev.adirelle.adicrafter.screen.slotclick.SlotClickHandler
-import dev.adirelle.adicrafter.screen.slotclick.SlotClickSpy
 import dev.adirelle.adicrafter.utils.extension.toArray
 import dev.adirelle.adicrafter.utils.extension.toItemString
 import dev.adirelle.adicrafter.utils.lazyLogger
+import dev.adirelle.adicrafter.utils.slotclick.SlotClickHandler
+import dev.adirelle.adicrafter.utils.slotclick.SlotClickSpy
 import io.github.cottonmc.cotton.gui.SyncedGuiDescription
 import io.github.cottonmc.cotton.gui.ValidatedSlot
 import io.github.cottonmc.cotton.gui.widget.WGridPanel
@@ -27,12 +25,13 @@ import net.minecraft.screen.slot.SlotActionType.PICKUP
 import net.minecraft.screen.slot.SlotActionType.QUICK_CRAFT
 
 class CrafterScreenHandler(
-    syncId: Int,
-    playerInventory: PlayerInventory,
-    private var blockEntity: CrafterBlockEntity? = null
-) :
-    SyncedGuiDescription(CRAFTER_SCREEN_HANDLER, syncId, playerInventory),
-    CrafterBlockEntity.Listener {
+    syncId: Int, playerInventory: PlayerInventory, private var blockEntity: CrafterBlockEntity? = null
+) : SyncedGuiDescription(Crafter.SCREEN_HANDLER_TYPE, syncId, playerInventory), CrafterBlockEntity.Listener {
+
+    companion object {
+
+        fun create(syncId: Int, playerInventory: PlayerInventory) = CrafterScreenHandler(syncId, playerInventory)
+    }
 
     private val logger by lazyLogger()
 
@@ -90,10 +89,8 @@ class CrafterScreenHandler(
     }
 
     private fun setStack(inventory: Inventory, slotIndex: Int, stack: ItemStack) {
-        getSlotIndex(inventory, slotIndex).ifPresentOrElse(
-            { slots[it].stack = stack.copy() },
-            { logger.warn("slot not found, {} {}", inventory, slotIndex) }
-        )
+        getSlotIndex(inventory, slotIndex).ifPresentOrElse({ slots[it].stack = stack.copy() },
+            { logger.warn("slot not found, {} {}", inventory, slotIndex) })
     }
 
     override fun onSlotClick(slotIndex: Int, button: Int, actionType: SlotActionType, player: PlayerEntity) {
@@ -103,10 +100,7 @@ class CrafterScreenHandler(
     }
 
     private fun interceptSlotClick(
-        slotIndex: Int,
-        button: Int,
-        actionType: SlotActionType,
-        player: PlayerEntity
+        slotIndex: Int, button: Int, actionType: SlotActionType, player: PlayerEntity
     ): Boolean {
         if (slotIndex !in 0 until slots.size) return false
         val slot = slots[slotIndex]
@@ -126,28 +120,19 @@ class CrafterScreenHandler(
     private fun findRecipe(): CraftingRecipe? =
         world.recipeManager.getFirstMatch(RecipeType.CRAFTING, backingGrid, world).orElse(null)
 
-    private inner class GridWrapper(backing: CraftingInventory) :
-        SlotClickHandler.Abstract<CraftingInventory>(backing) {
+    private inner class GridWrapper(backing: CraftingInventory) : SlotClickHandler.Abstract<CraftingInventory>(backing) {
 
         override fun handleSlotClick(
-            slot: Slot,
-            button: Int,
-            actionType: SlotActionType,
-            player: PlayerEntity
+            slot: Slot, button: Int, actionType: SlotActionType, player: PlayerEntity
         ): Boolean {
             if (blockEntity == null) return true
             return when (actionType) {
-                PICKUP ->
-                    if (!cursorStack.isEmpty && (slot.stack.isEmpty || !ItemStack.canCombine(
-                            cursorStack,
-                            slot.stack
-                        ))
-                    )
-                        setSlot(slot, cursorStack)
-                    else
-                        clearSlot(slot)
-                QUICK_CRAFT ->
-                    setSlot(slot, cursorStack)
+                PICKUP -> if (!cursorStack.isEmpty && (slot.stack.isEmpty || !ItemStack.canCombine(
+                        cursorStack, slot.stack
+                    ))
+                ) setSlot(slot, cursorStack)
+                else clearSlot(slot)
+                QUICK_CRAFT -> setSlot(slot, cursorStack)
                 else -> {
                     logger.info("ignoring action {} on #{}", actionType, slot.index)
                     true
@@ -179,12 +164,10 @@ class CrafterScreenHandler(
         }
     }
 
-    private class GridSlot(inventory: Inventory, index: Int, x: Int, y: Int) :
-        ValidatedSlot(inventory, index, x, y) {
+    private class GridSlot(inventory: Inventory, index: Int, x: Int, y: Int) : ValidatedSlot(inventory, index, x, y) {
 
         override fun canTakePartial(player: PlayerEntity?) = false
         override fun canTakeItems(player: PlayerEntity?) = false
     }
 
 }
-

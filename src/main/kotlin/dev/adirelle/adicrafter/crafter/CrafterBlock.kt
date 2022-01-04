@@ -1,6 +1,5 @@
-package dev.adirelle.adicrafter.block
+package dev.adirelle.adicrafter.crafter
 
-import dev.adirelle.adicrafter.blockentity.CrafterBlockEntity
 import net.fabricmc.fabric.api.`object`.builder.v1.block.FabricBlockSettings
 import net.minecraft.block.BlockRenderType
 import net.minecraft.block.BlockState

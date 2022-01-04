@@ -1,4 +1,4 @@
-package dev.adirelle.adicrafter.screen
+package dev.adirelle.adicrafter.crafter
 
 import io.github.cottonmc.cotton.gui.client.CottonInventoryScreen
 import net.fabricmc.api.EnvType.CLIENT

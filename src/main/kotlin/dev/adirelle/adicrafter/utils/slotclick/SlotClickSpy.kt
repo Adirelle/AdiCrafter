@@ -1,4 +1,4 @@
-package dev.adirelle.adicrafter.screen.slotclick
+package dev.adirelle.adicrafter.utils.slotclick
 
 import dev.adirelle.adicrafter.utils.lazyLogger
 import net.minecraft.entity.player.PlayerEntity
