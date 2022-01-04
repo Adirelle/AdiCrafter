@@ -10,3 +10,4 @@ val BLANK_ITEM_VARIANT: ItemVariant = ItemVariant.blank()
 fun ItemVariant.canCombineWith(other: ItemAmount) = canCombineWith(other.toStack())
 fun ItemVariant.canCombineWith(other: ItemVariant) = canCombineWith(other.toStack())
 fun ItemVariant.canCombineWith(other: ItemStack) = ItemStack.canCombine(toStack(), other)
+fun ItemVariant.getMaxCount(): Int = item.maxCount

@@ -15,3 +15,4 @@ fun ItemAmount.maxStackAmount() = if (resource.isBlank) 0L else resource.item.ma
 fun ItemAmount.canCombineWith(other: ItemAmount) = isEmpty() || resource.canCombineWith(other)
 fun ItemAmount.canCombineWith(other: ItemVariant) = isEmpty() || resource.canCombineWith(other)
 fun ItemAmount.canCombineWith(other: ItemStack) = isEmpty() || resource.canCombineWith(other)
+fun ItemAmount.getMaxCount(): Int = resource.maxCount

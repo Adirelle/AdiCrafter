@@ -31,7 +31,8 @@ class CrafterScreenHandler(
     playerInventory: PlayerInventory,
     private var blockEntity: CrafterBlockEntity? = null
 ) :
-    SyncedGuiDescription(CRAFTER_SCREEN_HANDLER, syncId, playerInventory) {
+    SyncedGuiDescription(CRAFTER_SCREEN_HANDLER, syncId, playerInventory),
+    CrafterBlockEntity.Listener {
 
     private val logger by lazyLogger()
 
@@ -66,14 +67,14 @@ class CrafterScreenHandler(
 
     override fun close(player: PlayerEntity) {
         super.close(player)
-        blockEntity?.onMenuClosed(this)
+        blockEntity?.onListenerClosed(this)
     }
 
     var updating = false
 
-    fun updateRecipeFromBlockEntity(gridStacks: List<ItemStack>, resultStack: ItemStack) {
+    override fun onRecipeChanged(gridStacks: List<ItemStack>, resultStack: ItemStack) {
         try {
-            logger.info("updateRecipeFromBlockEntity: {}, {}", toItemString(gridStacks), resultStack)
+            logger.info("onRecipeChanged: {}, {}", toItemString(gridStacks), resultStack)
             updating = true
             gridStacks.forEachIndexed { idx, stack -> setStack(grid, idx, stack) }
             setStack(result, 0, resultStack)
@@ -82,8 +83,8 @@ class CrafterScreenHandler(
         }
     }
 
-    fun updateOutputFromBlockEntity(bufferStack: ItemStack, outputStack: ItemStack) {
-        logger.info("updateOutputFromBlockEntity: {}, {}", bufferStack, outputStack)
+    override fun onOutputChanged(bufferStack: ItemStack, outputStack: ItemStack) {
+        logger.info("onOutputChanged: {}, {}", bufferStack, outputStack)
         setStack(buffer, 0, bufferStack)
         setStack(output, 0, outputStack)
     }
@@ -117,7 +118,7 @@ class CrafterScreenHandler(
         if (updating) return
         val blockEntity = blockEntity ?: return
         if (inventory == backingGrid) {
-            blockEntity.updateRecipeFromScreen(findRecipe(), grid.toArray())
+            blockEntity.setRecipe(findRecipe(), grid.toArray())
         }
         super.onContentChanged(inventory)
     }
