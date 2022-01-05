@@ -1,5 +1,6 @@
 package dev.adirelle.adicrafter.crafter
 
+import dev.adirelle.adicrafter.utils.lazyLogger
 import net.fabricmc.fabric.api.`object`.builder.v1.block.FabricBlockSettings
 import net.minecraft.block.BlockRenderType
 import net.minecraft.block.BlockState
@@ -18,6 +19,8 @@ class CrafterBlock : BlockWithEntity(
         .of(Material.METAL)
         .strength(4.0f)
 ) {
+
+    private val logger by lazyLogger()
 
     override fun createBlockEntity(pos: BlockPos, state: BlockState): BlockEntity =
         CrafterBlockEntity(pos, state)
