@@ -1,15 +1,8 @@
 package dev.adirelle.adicrafter.crafter
 
-import dev.adirelle.adicrafter.utils.BaseEmitter
-import dev.adirelle.adicrafter.utils.Emitter
-import dev.adirelle.adicrafter.utils.Receiver
+import dev.adirelle.adicrafter.utils.DefaultNotifier
 import dev.adirelle.adicrafter.utils.extension.*
 import dev.adirelle.adicrafter.utils.lazyLogger
-import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
-import net.fabricmc.fabric.api.transfer.v1.storage.base.SingleSlotStorage
-import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction
-import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
-import net.fabricmc.fabric.api.transfer.v1.transaction.base.SnapshotParticipant
 import net.minecraft.block.BlockState
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.entity.player.PlayerEntity
@@ -26,7 +19,6 @@ import net.minecraft.text.Text
 import net.minecraft.text.TranslatableText
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
-import toVariant
 import java.util.*
 
 @Suppress("UnstableApiUsage")
@@ -34,7 +26,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
     BlockEntity(Crafter.BLOCK_ENTITY_TYPE, pos, state),
     NamedScreenHandlerFactory {
 
-    companion object Consts {
+    companion object {
 
         private const val GRID_NBT_KEY = "Grid"
         private const val BUFFER_NBT_KEY = "Buffer"
@@ -46,115 +38,126 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
     private val logger by lazyLogger()
 
-    private val craftingGrid = CraftingInventory(
-        object : ScreenHandler(null, 0) {
-            override fun canUse(player: PlayerEntity) = false
-        },
-        GRID_WIDTH,
-        GRID_HEIGHT
-    )
+    private var loading = true
 
-    private var buffer = ItemStack.EMPTY
+    val gridNotifier = DefaultNotifier<Array<ItemStack>>()
+    var grid = Array(9) { ItemStack.EMPTY }
+        set(value) {
+            if (!value.contentEquals(field)) {
+                field = value
+                dirtyRecipe = true
+                if (!loading) {
+                    markDirty()
+                }
+                gridNotifier.notify(value)
+            }
+        }
 
-    private var recipe: Optional<CraftingRecipe> = Optional.empty()
-    private val recipeOutput: ItemStack
-        get() = recipe.map { it.output }.orElse(ItemStack.EMPTY)
+    val bufferNotifier = DefaultNotifier<ItemStack>()
+    var buffer: ItemStack = ItemStack.EMPTY
+        set(value) {
+            if (!ItemStack.areEqual(field, value)) {
+                field = value
+                if (!loading) {
+                    markDirty()
+                }
+                bufferNotifier.notify(value)
+            }
+        }
 
-    private var lastOutputSim = ItemStack.EMPTY
+    val forecastNotifier = DefaultNotifier<ItemStack>()
+    var forecast: ItemStack = ItemStack.EMPTY
+        set(value) {
+            if (!ItemStack.areEqual(field, value)) {
+                field = value
+                forecastNotifier.notify(value)
+            }
+        }
+
+    private var dirtyRecipe = false
+    val recipeNotifier = DefaultNotifier<Optional<CraftingRecipe>>()
+    var recipe = Optional.empty<CraftingRecipe>()
+        set(value) {
+            if (field != value) {
+                field = value
+                recipeNotifier.notify(value)
+            }
+        }
+        get() {
+            if (dirtyRecipe) {
+                dirtyRecipe = false
+                recipe = resolveRecipe(grid)
+            }
+            return field
+        }
 
     override fun getDisplayName(): Text = TranslatableText("block.adicrafter.crafter")
 
     override fun createMenu(syncId: Int, playerInventory: PlayerInventory, player: PlayerEntity) =
         CrafterScreenHandler(syncId, playerInventory, this)
 
+    override fun setWorld(world: World?) {
+        super.setWorld(world)
+        if (world != null) {
+            loading = false
+        }
+    }
+
     override fun readNbt(nbt: NbtCompound) {
         super.readNbt(nbt)
 
-        val savedBuffer = nbt.getItemStack(BUFFER_NBT_KEY)
-        val savedGrid = nbt.getItemStacks(GRID_NBT_KEY).toTypedArray()
+        buffer = nbt.getItemStack(BUFFER_NBT_KEY)
+        grid = nbt.getItemStacks(GRID_NBT_KEY).toTypedArray()
 
-        buffer = savedBuffer
-        onGridUpdated(savedGrid)
+        logger.info("read from NBT: {}, {}", buffer, toItemString(grid))
     }
 
     override fun writeNbt(nbt: NbtCompound) {
         super.writeNbt(nbt)
 
-        nbt.putItemStacks(GRID_NBT_KEY, craftingGrid.toList())
+        nbt.putItemStacks(GRID_NBT_KEY, grid.toList())
         nbt.putItemStack(BUFFER_NBT_KEY, buffer)
+
+        logger.info("written to NBT: {}, {}", buffer, toItemString(grid))
     }
 
-    val gridUpdateEmitter = BaseEmitter<GridUpdate>()
-
-    init {
-        gridUpdateEmitter.listen { payload -> onGridUpdated(payload.grid) }
-    }
-
-    val recipeUpdateEmitter: Emitter<RecipeUpdate> = object : BaseEmitter<RecipeUpdate>() {
-        override fun onNewReceiver(receiver: Receiver<RecipeUpdate>) {
-            logger.info("added new recipe receiver {}", receiver)
-            receiver.onReceived(RecipeUpdate(craftingGrid.toArray(), recipeOutput))
+    private fun resolveRecipe(grid: Array<ItemStack>): Optional<CraftingRecipe> {
+        val craftingGrid by lazy {
+            CraftingInventory(
+                object : ScreenHandler(null, 0) {
+                    override fun canUse(player: PlayerEntity?) = false
+                },
+                GRID_WIDTH, GRID_HEIGHT
+            )
         }
-    }
 
-    val outputUpdateEmitter: Emitter<OutputUpdate> = object : BaseEmitter<OutputUpdate>() {
-        override fun onNewReceiver(receiver: Receiver<OutputUpdate>) {
-            logger.info("added new output receiver {}", receiver)
-            receiver.onReceived(OutputUpdate(buffer, lastOutputSim))
-        }
-    }
-
-    val storage: SingleSlotStorage<ItemVariant> = StorageImpl()
-
-    private fun onGridUpdated(newGrid: Array<ItemStack>) {
-        val oldGrid = toItemString(newGrid)
-
-        for (idx in 0 until GRID_SIZE) {
-            val stack = newGrid[idx]
-            if (ItemStack.areEqual(stack, craftingGrid.getStack(idx))) {
-                continue
+        return Optional
+            .ofNullable(world as? ServerWorld)
+            .filter { !grid.all { it.isEmpty } }
+            .flatMap { world ->
+                for (idx in 0 until GRID_SIZE) {
+                    craftingGrid.setStack(idx, grid[idx])
+                }
+                world.recipeManager.getFirstMatch(RecipeType.CRAFTING, craftingGrid, world)
             }
-            craftingGrid.setStack(idx, stack.copy())
-        }
-        logger.info("onGridUpdated: {} -> {}", oldGrid, toItemString(craftingGrid))
-
-        resolveRecipe()
-        markDirty()
+            .tap { logger.info("found recipe: {} -> {}", toItemString(grid), it) }
+            .instanceOf()
     }
 
-    override fun setWorld(world: World?) {
-        logger.info("setWorld: {}", world)
-        super.setWorld(world)
-        resolveRecipe()
-    }
-
-    private fun resolveRecipe() {
-        (world as? ServerWorld)?.let { world ->
-
-            val originalId = recipe.map { it.id }
-
-            recipe = Optional.of(craftingGrid)
-                .filter { !it.isEmpty }
-                .flatMap { world.recipeManager.getFirstMatch(RecipeType.CRAFTING, it, world) }
-                .instanceOf()
-            logger.info("recipe resolved: {} -> {}", originalId, recipe.map { it.id })
-
-            recipeUpdateEmitter.emit(RecipeUpdate(craftingGrid.toArray(), recipeOutput))
-            updateOutputSim()
-
+/*
+    private fun updateForecast(txc: TransactionContext? = null) {
+        if (!invalidForecast || (Transaction.isOpen() && txc == null)) return
+        invalidForecast = false
+        val newForecast = inNestedTransaction(txc) { tx ->
+            Crafter(tx).available().also {
+                tx.abort()
+            }
         }
-    }
-
-    private fun updateOutputSim() {
-        logger.info("updateOutputSim")
-
-        inOuterTransaction { tx ->
-            lastOutputSim = CraftHelper(tx).available().copy()
-            logger.info("lastOutputSim: {}", lastOutputSim)
-            tx.abort()
+        if (!ItemStack.areEqual(newForecast, forecast)) {
+            logger.info("forecast changed: {} -> {}", forecast, newForecast)
+            forecast = newForecast
+            outputUpdateEmitter.emit(OutputUpdate(buffer, forecast))
         }
-
-        outputUpdateEmitter.emit(OutputUpdate(buffer, lastOutputSim))
     }
 
     data class GridUpdate(val grid: Array<ItemStack>)
@@ -163,56 +166,67 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
     data class OutputUpdate(val buffer: ItemStack, val output: ItemStack)
 
-    private inner class CraftHelper(val tx: Transaction) : SnapshotParticipant<ItemStack>() {
+    private inner class Crafter(val tx: Transaction) : SnapshotParticipant<ItemStack>() {
+
+        private val logger by lazyLogger()
 
         fun available(): ItemStack =
-            if (buffer.isEmpty) doCraft()
-            else buffer
+            if (buffer.isEmpty) craft()
+            else buffer.copy()
 
-        fun craft(maxAmount: Int): ItemStack {
+        fun take(maxAmount: Int): ItemStack {
             updateSnapshots(tx)
+            logger.info("request for {} items", maxAmount)
             if (buffer.isEmpty) {
-                buffer = doCraft()
+                buffer = craft()
             }
-            return buffer.split(maxAmount)
+            val extracted = buffer.split(maxAmount)
+            logger.info("taking {}s, {}s left", extracted, maxAmount, buffer)
+            return extracted
         }
 
-        override fun onFinalCommit() {
-            logger.info("updating output simulation after crafting")
-            updateOutputSim()
+        private fun craft(): ItemStack {
+            val crafted = recipeOutput.copy()
+            logger.info("crafted {}s", crafted)
+            return crafted
         }
-
-        private fun doCraft(): ItemStack = recipe.map { it.output }.orElse(ItemStack.EMPTY).copy()
 
         override fun createSnapshot(): ItemStack = buffer.copy()
         override fun readSnapshot(snapshot: ItemStack) {
+            logger.info("reverting changes")
             buffer = snapshot
         }
     }
 
     private inner class StorageImpl : SingleSlotStorage<ItemVariant> {
 
-        override fun supportsInsertion() = false
-        override fun insert(resource: ItemVariant, maxAmount: Long, txc: TransactionContext?) = 0L
+        private val logger by lazyLogger()
 
         override fun extract(resource: ItemVariant, maxAmount: Long, txc: TransactionContext?) =
-            if (resource.isBlank || maxAmount < 1)
+            if (!resource.canCombineWith(this.resource)) {
+                logger.info("cannot stack resource: {}", resource)
                 0L
-            else
+            } else
                 inNestedTransaction(txc) { tx ->
-                    val helper = CraftHelper(tx)
-                    var extracted = 0L
-                    var crafted = helper.craft(maxAmount.toInt())
-                    while (extracted < maxAmount && resource.matches(crafted) && crafted.count > 0) {
-                        extracted += crafted.count.toLong()
-                        crafted = helper.craft((maxAmount - extracted).toInt())
-                    }
-                    extracted
+                    logger.info("request for up to {} {}s", maxAmount, resource.item)
+                    val crafter = Crafter(tx)
+                    var remaining = maxAmount
+                    do {
+                        val crafted = crafter.take(remaining.toInt())
+                        remaining -= crafted.count.toLong()
+                        logger.info("extracted {}s, {} remaining", crafted, remaining)
+                    } while (remaining > 0 && crafted.count > 0 && ItemStack.canCombine(crafted, resource.toStack()))
+                    tx.commit()
+                    (maxAmount - remaining)
                 }
 
-        override fun isResourceBlank() = lastOutputSim.isEmpty
-        override fun getResource() = lastOutputSim.toVariant()
-        override fun getAmount() = lastOutputSim.count.toLong()
-        override fun getCapacity() = lastOutputSim.maxCount.toLong()
+        override fun isResourceBlank() = forecast.isEmpty
+        override fun getResource() = forecast.toVariant()
+        override fun getAmount() = forecast.count.toLong()
+        override fun getCapacity() = forecast.maxCount.toLong()
+
+        override fun supportsInsertion() = false
+        override fun insert(resource: ItemVariant, maxAmount: Long, txc: TransactionContext?) = 0L
     }
+ */
 }

@@ -4,8 +4,6 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import kotlin.reflect.KProperty
 
-fun lazyLogger(name: Any? = null) = LazyLogger(name)
-
 class LazyLogger(private val name: Any?) {
 
     private var logger: Logger? = null
@@ -19,3 +17,5 @@ class LazyLogger(private val name: Any?) {
         return logger!!
     }
 }
+
+fun lazyLogger(name: Any? = null) = LazyLogger(name)

@@ -3,7 +3,6 @@ package dev.adirelle.adicrafter.utils.extension
 import net.fabricmc.fabric.api.util.NbtType
 import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NbtCompound
-import toNbt
 
 fun NbtCompound.putItemStack(key: String, stack: ItemStack) =
     put(key, stack.toNbt())
