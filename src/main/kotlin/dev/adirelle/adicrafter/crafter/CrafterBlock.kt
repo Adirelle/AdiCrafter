@@ -1,13 +1,15 @@
 package dev.adirelle.adicrafter.crafter
 
-import dev.adirelle.adicrafter.utils.lazyLogger
 import net.fabricmc.fabric.api.`object`.builder.v1.block.FabricBlockSettings
 import net.minecraft.block.BlockRenderType
 import net.minecraft.block.BlockState
 import net.minecraft.block.BlockWithEntity
 import net.minecraft.block.Material
 import net.minecraft.block.entity.BlockEntity
+import net.minecraft.block.entity.BlockEntityTicker
+import net.minecraft.block.entity.BlockEntityType
 import net.minecraft.entity.player.PlayerEntity
+import net.minecraft.server.world.ServerWorld
 import net.minecraft.util.ActionResult
 import net.minecraft.util.Hand
 import net.minecraft.util.hit.BlockHitResult
@@ -20,10 +22,20 @@ class CrafterBlock : BlockWithEntity(
         .strength(4.0f)
 ) {
 
-    private val logger by lazyLogger()
-
     override fun createBlockEntity(pos: BlockPos, state: BlockState): BlockEntity =
         CrafterBlockEntity(pos, state)
+
+    override fun <T : BlockEntity> getTicker(
+        world: World,
+        state: BlockState,
+        type: BlockEntityType<T>
+    ): BlockEntityTicker<T>? {
+        return (world as? ServerWorld)?.let {
+            checkType(type, Crafter.BLOCK_ENTITY_TYPE) { world, _, _, blockEntity ->
+                blockEntity.tick(world)
+            }
+        }
+    }
 
     override fun onUse(
         state: BlockState,

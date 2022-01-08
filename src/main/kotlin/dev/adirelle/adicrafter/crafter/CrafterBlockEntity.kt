@@ -1,20 +1,15 @@
 package dev.adirelle.adicrafter.crafter
 
-import dev.adirelle.adicrafter.utils.DefaultNotifier
+import dev.adirelle.adicrafter.utils.*
 import dev.adirelle.adicrafter.utils.extension.*
-import dev.adirelle.adicrafter.utils.lazyLogger
 import net.minecraft.block.BlockState
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.entity.player.PlayerInventory
-import net.minecraft.inventory.CraftingInventory
 import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NbtCompound
 import net.minecraft.recipe.CraftingRecipe
-import net.minecraft.recipe.RecipeType
 import net.minecraft.screen.NamedScreenHandlerFactory
-import net.minecraft.screen.ScreenHandler
-import net.minecraft.server.world.ServerWorld
 import net.minecraft.text.Text
 import net.minecraft.text.TranslatableText
 import net.minecraft.util.math.BlockPos
@@ -38,110 +33,85 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
     private val logger by lazyLogger()
 
-    private var loading = true
-
-    val gridNotifier = DefaultNotifier<Array<ItemStack>>()
-    var grid = Array(9) { ItemStack.EMPTY }
-        set(value) {
-            if (!value.contentEquals(field)) {
-                field = value
-                dirtyRecipe = true
-                if (!loading) {
-                    markDirty()
-                }
-                gridNotifier.notify(value)
-            }
-        }
-
-    val bufferNotifier = DefaultNotifier<ItemStack>()
-    var buffer: ItemStack = ItemStack.EMPTY
-        set(value) {
-            if (!ItemStack.areEqual(field, value)) {
-                field = value
-                if (!loading) {
-                    markDirty()
-                }
-                bufferNotifier.notify(value)
-            }
-        }
-
-    val forecastNotifier = DefaultNotifier<ItemStack>()
-    var forecast: ItemStack = ItemStack.EMPTY
-        set(value) {
-            if (!ItemStack.areEqual(field, value)) {
-                field = value
-                forecastNotifier.notify(value)
-            }
-        }
-
     private var dirtyRecipe = false
-    val recipeNotifier = DefaultNotifier<Optional<CraftingRecipe>>()
-    var recipe = Optional.empty<CraftingRecipe>()
-        set(value) {
-            if (field != value) {
-                field = value
-                recipeNotifier.notify(value)
-            }
+    private var dirtyForecast = false
+
+    private var grid = MutableList(GRID_SIZE) { ItemStack.EMPTY }
+    private var recipe = Optional.empty<CraftingRecipe>()
+    private var buffer: ItemStack = ItemStack.EMPTY
+    private var forecast: ItemStack = ItemStack.EMPTY
+
+    data class DisplayState(
+        val grid: List<ItemStack>,
+        val recipe: Optional<CraftingRecipe>,
+        val buffer: ItemStack,
+        val forecast: ItemStack
+    )
+
+    val displayBroadcaster = Broadcaster<DisplayState>()
+    fun getDisplayState() = DisplayState(grid, recipe, buffer, forecast)
+
+    fun tick(world: World) {
+        var shouldBroadcast = dirtyRecipe
+        if (dirtyRecipe) {
+            updateRecipe(world)
         }
-        get() {
-            if (dirtyRecipe) {
-                dirtyRecipe = false
-                recipe = resolveRecipe(grid)
-            }
-            return field
+        if (dirtyForecast && displayBroadcaster.hasListeners()) {
+            shouldBroadcast = true
         }
+        if (shouldBroadcast) {
+            displayBroadcaster.emit(getDisplayState())
+        }
+    }
+
+    fun setGrid(newGrid: List<ItemStack>) =
+        ifDifferent(grid, newGrid) {
+            expectSameSizeAs(newGrid, grid).forEachIndexed { index, stack ->
+                grid[index] = stack.copy()
+            }
+            dirtyRecipe = true
+            markDirty()
+        }
+
+    private fun updateRecipe(world: World) {
+        val newRecipe = CraftingRecipeResolver.of(world).resolve(grid)
+        if (!areEqual(newRecipe, recipe)) {
+            recipe = newRecipe
+            dirtyForecast = true
+        }
+        dirtyRecipe = false
+    }
 
     override fun getDisplayName(): Text = TranslatableText("block.adicrafter.crafter")
 
     override fun createMenu(syncId: Int, playerInventory: PlayerInventory, player: PlayerEntity) =
         CrafterScreenHandler(syncId, playerInventory, this)
 
-    override fun setWorld(world: World?) {
-        super.setWorld(world)
-        if (world != null) {
-            loading = false
-        }
-    }
-
     override fun readNbt(nbt: NbtCompound) {
         super.readNbt(nbt)
 
-        buffer = nbt.getItemStack(BUFFER_NBT_KEY)
-        grid = nbt.getItemStacks(GRID_NBT_KEY).toTypedArray()
+        val newBuffer = nbt.getItemStack(BUFFER_NBT_KEY)
+        if (!areEqual(buffer, newBuffer)) {
+            logger.info("read from NBT: {}, {}", newBuffer)
+            buffer = newBuffer
+            dirtyForecast = true
+        }
 
-        logger.info("read from NBT: {}, {}", buffer, toItemString(grid))
+        val newGrid = nbt.getItemStacks(GRID_NBT_KEY)
+        if (!areEqual(grid, newGrid)) {
+            logger.info("read from NBT: {}, {}", toItemString(newGrid))
+            grid = ArrayList(newGrid.map { it.copy() })
+            dirtyRecipe = true
+        }
     }
 
     override fun writeNbt(nbt: NbtCompound) {
         super.writeNbt(nbt)
 
-        nbt.putItemStacks(GRID_NBT_KEY, grid.toList())
+        nbt.putItemStacks(GRID_NBT_KEY, grid)
         nbt.putItemStack(BUFFER_NBT_KEY, buffer)
 
         logger.info("written to NBT: {}, {}", buffer, toItemString(grid))
-    }
-
-    private fun resolveRecipe(grid: Array<ItemStack>): Optional<CraftingRecipe> {
-        val craftingGrid by lazy {
-            CraftingInventory(
-                object : ScreenHandler(null, 0) {
-                    override fun canUse(player: PlayerEntity?) = false
-                },
-                GRID_WIDTH, GRID_HEIGHT
-            )
-        }
-
-        return Optional
-            .ofNullable(world as? ServerWorld)
-            .filter { !grid.all { it.isEmpty } }
-            .flatMap { world ->
-                for (idx in 0 until GRID_SIZE) {
-                    craftingGrid.setStack(idx, grid[idx])
-                }
-                world.recipeManager.getFirstMatch(RecipeType.CRAFTING, craftingGrid, world)
-            }
-            .tap { logger.info("found recipe: {} -> {}", toItemString(grid), it) }
-            .instanceOf()
     }
 
 /*
