@@ -1,7 +1,8 @@
-package dev.adirelle.adicrafter.utils
+package dev.adirelle.adicrafter.utils.minecraft
 
 import dev.adirelle.adicrafter.utils.extension.asList
 import dev.adirelle.adicrafter.utils.extension.copyFrom
+import dev.adirelle.adicrafter.utils.general.memoize
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.inventory.CraftingInventory
 import net.minecraft.inventory.Inventory
@@ -24,7 +25,8 @@ interface RecipeResolver<T : Recipe<*>> {
         resolve(ary.asList())
 }
 
-class CraftingRecipeResolver private constructor(private val world: World) : RecipeResolver<CraftingRecipe> {
+class CraftingRecipeResolver private constructor(private val world: World) :
+    RecipeResolver<CraftingRecipe> {
 
     companion object {
 
@@ -40,15 +42,6 @@ class CraftingRecipeResolver private constructor(private val world: World) : Rec
     }
 
     private val craftingGrid = CraftingInventory(dummyScreenHandler, 3, 3)
-
-    val width: Int
-        get() = craftingGrid.width
-
-    val height: Int
-        get() = craftingGrid.height
-
-    val size: Int
-        get() = craftingGrid.size()
 
     override fun resolve(stacks: List<ItemStack>): Optional<CraftingRecipe> {
         craftingGrid.copyFrom(stacks)

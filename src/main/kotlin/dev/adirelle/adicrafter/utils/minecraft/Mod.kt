@@ -3,6 +3,7 @@
 package dev.adirelle.adicrafter.utils.mod
 
 import com.mojang.datafixers.types.Type
+import dev.adirelle.adicrafter.utils.general.lazyLogger
 import net.fabricmc.api.*
 import net.fabricmc.api.EnvType.CLIENT
 import net.fabricmc.api.EnvType.SERVER
@@ -75,7 +76,7 @@ open class Mod(val MOD_ID: String) : SidedModInitalizer {
 
 open class ModFeature(mod: Mod, val NAME: String) : SidedModInitalizer {
 
-    override val LOGGER by lazy { LogManager.getLogger("${MOD_ID}:${NAME}")!! }
+    final override val LOGGER by lazyLogger("${mod.MOD_ID}:${NAME}")
 
     val MOD_ID = mod.MOD_ID
     val ID = Identifier(MOD_ID, NAME)
@@ -84,11 +85,11 @@ open class ModFeature(mod: Mod, val NAME: String) : SidedModInitalizer {
         LOGGER.debug("initializing feature ${ID}")
     }
 
-    fun <T : Block> register(entry: T, id: Identifier = ID): Block =
-        Registry.BLOCK.register(id, entry)
+    fun <T : Block> register(entry: T, id: Identifier = ID): T =
+        entry.also { Registry.BLOCK.register(id, it) }
 
-    fun <T : Item> register(entry: T, id: Identifier = ID): Item =
-        Registry.ITEM.register(id, entry)
+    fun <T : Item> register(entry: T, id: Identifier = ID): T =
+        entry.also { Registry.ITEM.register(id, entry) }
 
     inline fun <T : Block> registerItemFor(
         block: T,

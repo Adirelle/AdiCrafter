@@ -2,7 +2,7 @@ package dev.adirelle.adicrafter.utils.extension
 
 import com.google.common.base.Preconditions
 import dev.adirelle.adicrafter.utils.expectExactSize
-import dev.adirelle.adicrafter.utils.memoize
+import dev.adirelle.adicrafter.utils.general.memoize
 import net.minecraft.inventory.Inventory
 import net.minecraft.item.ItemStack
 import net.minecraft.item.ItemStack.areEqual
@@ -105,12 +105,11 @@ class InventoryListView(
         override fun previousIndex() = index - 1
 
         override fun next(): ItemStack =
-            if (hasNext()) inventory.getStack(index++)
+            if (index < size) inventory.getStack(index++)
             else throw IndexOutOfBoundsException("cannot iterate beyond the last element")
 
-        override fun previous() =
-            if (hasPrevious()) inventory.getStack(--index)
+        override fun previous(): ItemStack =
+            if (index > 0) inventory.getStack(--index)
             else throw IndexOutOfBoundsException("cannot iterate before the first element")
-
     }
 }

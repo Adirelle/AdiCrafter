@@ -4,15 +4,16 @@ package dev.adirelle.adicrafter.crafter
 
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.DisplayState
 import dev.adirelle.adicrafter.utils.expectExactSize
-import dev.adirelle.adicrafter.utils.extension.asList
-import dev.adirelle.adicrafter.utils.extension.close
-import dev.adirelle.adicrafter.utils.extension.set
-import dev.adirelle.adicrafter.utils.extension.toItemString
+import dev.adirelle.adicrafter.utils.extension.*
+import dev.adirelle.adicrafter.utils.general.lazyLogger
 import dev.adirelle.adicrafter.utils.ifDifferent
-import dev.adirelle.adicrafter.utils.lazyLogger
 import io.github.cottonmc.cotton.gui.SyncedGuiDescription
 import io.github.cottonmc.cotton.gui.widget.WGridPanel
 import io.github.cottonmc.cotton.gui.widget.WItemSlot
+import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
+import net.fabricmc.fabric.api.transfer.v1.item.PlayerInventoryStorage
+import net.fabricmc.fabric.api.transfer.v1.storage.Storage
+import net.fabricmc.fabric.api.transfer.v1.storage.StorageUtil
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.entity.player.PlayerInventory
 import net.minecraft.inventory.SimpleInventory
@@ -20,18 +21,21 @@ import net.minecraft.item.ItemStack
 import net.minecraft.screen.slot.Slot
 import net.minecraft.screen.slot.SlotActionType
 import net.minecraft.screen.slot.SlotActionType.*
+import kotlin.math.min
 
 class CrafterScreenHandler(
     syncId: Int, playerInventory: PlayerInventory,
     blockEntity: CrafterBlockEntity? = null
 ) : SyncedGuiDescription(Crafter.SCREEN_HANDLER_TYPE, syncId, playerInventory) {
 
-    private val logger by lazyLogger()
+    private val logger by lazyLogger
 
     private val grid = SimpleInventory(CrafterBlockEntity.GRID_SIZE)
     private val result = SimpleInventory(1)
     private val buffer = SimpleInventory(1)
     private val forecast = SimpleInventory(1)
+
+    private val crafter: Storage<ItemVariant>? = blockEntity?.crafter
 
     init {
         with(rootPanel as WGridPanel) {
@@ -101,7 +105,7 @@ class CrafterScreenHandler(
         slots.getOrNull(slotIndex)?.let { slot ->
             return when (slot.inventory) {
                 grid     -> onGridClick(slot, actionType)
-                forecast -> onOutputClick(slot, actionType)
+                forecast -> crafter?.let { onOutputClick(it, actionType) } ?: Unit
                 else     -> super.onSlotClick(slotIndex, button, actionType, player)
             }
         }
@@ -131,38 +135,46 @@ class CrafterScreenHandler(
         logger.info("ignored onGridClick: #{} {}", slot.index, actionType)
     }
 
-    private fun onOutputClick(slot: Slot, actionType: SlotActionType) {
-        return
-        /*
-        val crafter = crafter ?: return
-        if (actionType != PICKUP && actionType != QUICK_MOVE) {
-            logger.info("ignored onOutputClick: #{} {}", slot.index, actionType)
-            return
+    private fun onOutputClick(crafter: Storage<ItemVariant>, actionType: SlotActionType) =
+        when (actionType) {
+            PICKUP     ->
+                withOuterTransaction { tx ->
+                    val cursor = PlayerInventoryStorage.getCursorStorage(this)
+                    StorageUtil.move(
+                        crafter,
+                        cursor,
+                        { it.canCombineWith(cursor.resource) },
+                        min(cursor.capacity - cursor.amount, forecast[0].count.toLong()),
+                        tx
+
+                    )
+                    tx.commit()
+                }
+            PICKUP_ALL ->
+                withOuterTransaction { tx ->
+                    val cursor = PlayerInventoryStorage.getCursorStorage(this)
+                    StorageUtil.move(
+                        crafter,
+                        cursor,
+                        { it.canCombineWith(cursor.resource) },
+                        cursor.capacity - cursor.amount,
+                        tx
+                    )
+                    tx.commit()
+                }
+            QUICK_MOVE ->
+                withOuterTransaction { tx ->
+                    StorageUtil.move(
+                        crafter,
+                        PlayerInventoryStorage.of(playerInventory),
+                        { true },
+                        Long.MAX_VALUE,
+                        tx
+                    )
+                    tx.commit()
+                }
+            else       ->
+                logger.info("ignored onOutputClick: {}", actionType)
         }
-        inOuterTransaction { tx ->
-            if (actionType == PICKUP) {
-                val cursor = PlayerInventoryStorage.getCursorStorage(this)
-                doCraft(cursor, min(cursor.capacity - cursor.amount, crafter.amount), cursor.resource, tx)
-            } else {
-                doCraft(PlayerInventoryStorage.of(playerInventory), crafter.capacity, crafter.resource, tx)
-            }
-            tx.commit()
-        }
-
-         */
-    }
-
-    /*
-    private fun doCraft(target: Storage<ItemVariant>, maxAmount: Long, resource: ItemVariant, tx: Transaction) {
-        logger.info("trying to move {} {} from {} to {}", maxAmount, toItemString(resource), crafter, target)
-
-        val filter: Predicate<ItemVariant> =
-            if (resource.isBlank) Predicate { true }
-            else Predicate.isEqual(resource)
-
-        val extracted = StorageUtil.move(crafter, target, filter, maxAmount, tx)
-        logger.info("crafted {}", extracted)
-    }
-     */
 
 }
