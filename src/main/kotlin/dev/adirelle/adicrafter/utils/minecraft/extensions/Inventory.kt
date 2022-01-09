@@ -12,23 +12,11 @@ val getInventoryListView = memoize(::InventoryListView)
 fun Inventory.asList(): List<ItemStack> =
     getInventoryListView(this)
 
-fun Inventory.toArray(): Array<ItemStack> =
-    Array(size()) { idx -> getStack(idx).copy() }
-
 fun Inventory.copyFrom(list: List<ItemStack>) {
     expectExactSize(list, size()).forEachIndexed { index, stack ->
         this[index] = stack
     }
 }
-
-fun Inventory.deepCopyFrom(list: List<ItemStack>) {
-    expectExactSize(list, size()).forEachIndexed { index, stack ->
-        this[index] = stack.copy()
-    }
-}
-
-fun Inventory.asList(fromIndex: Int, toIndex: Int = fromIndex + 1): List<ItemStack> =
-    InventoryListView(this, fromIndex, toIndex)
 
 fun Inventory.iterator() =
     InventoryIterator(this)

@@ -25,6 +25,6 @@ object Crafter : ModFeature(AdiCrafter, "crafter") {
     val SCREEN = register(SCREEN_HANDLER_TYPE, ::CrafterScreen)
 
     init {
-        ItemStorage.SIDED.registerForBlockEntity({ blockEntity, _ -> blockEntity.crafter }, BLOCK_ENTITY_TYPE)
+        ItemStorage.SIDED.registerForBlockEntity({ blockEntity, _ -> blockEntity.storage }, BLOCK_ENTITY_TYPE)
     }
 }

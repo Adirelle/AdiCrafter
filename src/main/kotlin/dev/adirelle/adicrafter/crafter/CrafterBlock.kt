@@ -1,10 +1,7 @@
 package dev.adirelle.adicrafter.crafter
 
 import net.fabricmc.fabric.api.`object`.builder.v1.block.FabricBlockSettings
-import net.minecraft.block.BlockRenderType
-import net.minecraft.block.BlockState
-import net.minecraft.block.BlockWithEntity
-import net.minecraft.block.Material
+import net.minecraft.block.*
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.block.entity.BlockEntityTicker
 import net.minecraft.block.entity.BlockEntityType
@@ -35,6 +32,17 @@ class CrafterBlock : BlockWithEntity(
                 blockEntity.tick(world)
             }
         }
+    }
+
+    override fun neighborUpdate(
+        state: BlockState,
+        world: World,
+        pos: BlockPos,
+        block: Block,
+        fromPos: BlockPos,
+        notify: Boolean
+    ) {
+        (world.getBlockEntity(pos) as? CrafterBlockEntity)?.onNeighborUpdate()
     }
 
     override fun onUse(

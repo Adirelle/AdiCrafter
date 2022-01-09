@@ -2,30 +2,26 @@
 
 package dev.adirelle.adicrafter.crafter
 
-import dev.adirelle.adicrafter.utils.Broadcaster
-import dev.adirelle.adicrafter.utils.areEqual
-import dev.adirelle.adicrafter.utils.expectSameSizeAs
-import dev.adirelle.adicrafter.utils.extension.getItemStacks
-import dev.adirelle.adicrafter.utils.extension.putItemStacks
-import dev.adirelle.adicrafter.utils.extension.toItemString
-import dev.adirelle.adicrafter.utils.extension.withNestedTransaction
+import dev.adirelle.adicrafter.crafter.internal.*
+import dev.adirelle.adicrafter.utils.Observer
+import dev.adirelle.adicrafter.utils.general.ObservableValueHolder
+import dev.adirelle.adicrafter.utils.general.extensions.EMPTY_ITEM_AMOUNT
 import dev.adirelle.adicrafter.utils.general.lazyLogger
-import dev.adirelle.adicrafter.utils.ifDifferent
-import dev.adirelle.adicrafter.utils.minecraft.CraftingRecipeResolver
-import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
+import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
+import net.fabricmc.fabric.api.transfer.v1.storage.Storage
+import net.fabricmc.fabric.api.transfer.v1.storage.base.ResourceAmount
+import net.fabricmc.fabric.api.util.NbtType
 import net.minecraft.block.BlockState
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.entity.player.PlayerInventory
-import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NbtCompound
-import net.minecraft.recipe.CraftingRecipe
 import net.minecraft.screen.NamedScreenHandlerFactory
 import net.minecraft.text.Text
 import net.minecraft.text.TranslatableText
+import net.minecraft.util.ItemScatterer
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
-import java.util.*
 
 class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
     BlockEntity(Crafter.BLOCK_ENTITY_TYPE, pos, state),
@@ -33,88 +29,86 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
     companion object {
 
-        private const val GRID_NBT_KEY = "Grid"
-        private const val BUFFER_NBT_KEY = "Buffer"
+        private const val CONFIG_NBT_KEY = "Config"
+        private const val CONTENT_NBT_KEY = "Content"
 
-        const val GRID_WIDTH = 3
-        const val GRID_HEIGHT = 3
-        const val GRID_SIZE = GRID_WIDTH * GRID_HEIGHT
+        const val GRID_SIZE = Grid.SIZE
+        const val GRID_WIDTH = Grid.WIDTH
+        const val GRID_HEIGHT = Grid.HEIGHT
     }
 
     private val logger by lazyLogger
 
-    private var dirtyRecipe = false
+    private var config = CraftingConfig()
+
+    private val inputProvider: InputProvider = object : AbstractInputProvider() {
+        override val world by this@CrafterBlockEntity::world
+        override val pos by this@CrafterBlockEntity::pos
+    }
+
+    private val crafter = RecipeCrafter(config::recipe, inputProvider)
+    private val craftingStorage = CraftingStorage(crafter)
+
     private var dirtyForecast = false
+    private val forecastHolder = ObservableValueHolder<ResourceAmount<ItemVariant>>(EMPTY_ITEM_AMOUNT)
 
-    private var grid: MutableList<ItemStack> = MutableList(GRID_SIZE) { ItemStack.EMPTY }
-    private var forecast: ItemStack = ItemStack.EMPTY
+    var grid by config::grid
+    val recipe by config::recipe
+    val content by craftingStorage::content
+    val forecast by forecastHolder
+    val storage: Storage<ItemVariant> by this::craftingStorage
 
-    private var bulkCrafter: BulkCraftingStorage = object : BulkCraftingStorage() {
-        override fun markDirty() {
+    init {
+        config.observeGrid { markDirty() }
+        config.observeRecipe {
+            dropContent()
             dirtyForecast = true
         }
-    }
-    private var recipe by bulkCrafter::recipe
-
-    private var buffer: TransactionalSingleStackStorage = object : TransactionalSingleStackStorage() {
-        override fun markDirty() {
-            super.markDirty()
+        craftingStorage.observeContent {
             dirtyForecast = true
-            this@CrafterBlockEntity.markDirty()
-        }
-    }
-
-    val crafter = CraftingStorage(buffer, bulkCrafter)
-
-    data class DisplayState(
-        val grid: List<ItemStack>,
-        val recipe: Optional<CraftingRecipe>,
-        val buffer: ItemStack,
-        val forecast: ItemStack
-    )
-
-    val displayBroadcaster = Broadcaster<DisplayState>()
-    fun getDisplayState() = DisplayState(grid, recipe, buffer.toStack(), forecast)
-
-    fun tick(world: World) {
-        var shouldBroadcast = dirtyRecipe
-        updateRecipe(world)
-        shouldBroadcast = shouldBroadcast || dirtyForecast
-        updateForecast()
-        if (shouldBroadcast) {
-            displayBroadcaster.emit(getDisplayState())
-        }
-    }
-
-    fun setGrid(newGrid: List<ItemStack>) =
-        ifDifferent(grid, newGrid) {
-            expectSameSizeAs(newGrid, grid).forEachIndexed { index, stack ->
-                grid[index] = stack.copy()
-            }
-            dirtyRecipe = true
             markDirty()
         }
-
-    private fun updateRecipe(world: World) {
-        if (!dirtyRecipe) return
-        recipe = CraftingRecipeResolver.of(world).resolve(grid)
-        dirtyRecipe = false
     }
 
-    private fun updateForecast(txc: TransactionContext? = null) {
-        if (!dirtyForecast || !displayBroadcaster.hasListeners()) return
-        forecast = ItemStack.EMPTY
-        val maxAmount = recipe.map { it.output.count.toLong() }.orElse(buffer.amount)
-        withNestedTransaction(txc) { tx ->
-            for (view in crafter.iterable(tx)) {
-                val resource = view.resource
-                if (resource.isBlank) continue
-                val amount = view.extract(resource, maxAmount, tx)
-                if (amount == 0L) continue
-                forecast = resource.toStack(amount.toInt())
+    fun observeGrid(callback: Observer<Grid>) = config.observeGrid(callback)
+
+    fun observeRecipe(callback: Observer<OptionalRecipe>) = config.observeRecipe(callback)
+
+    fun observeContent(callback: Observer<ResourceAmount<ItemVariant>>) = craftingStorage.observeContent(callback)
+
+    fun observeForecast(callback: Observer<ResourceAmount<ItemVariant>>): AutoCloseable {
+        dirtyForecast = true
+        return forecastHolder.observeValue(callback)
+    }
+
+    fun onNeighborUpdate() {
+        logger.info("neighbor updated")
+        dirtyForecast = true
+    }
+
+    fun tick(world: World) {
+        config.cleanRecipe(world)
+        updateForecast()
+    }
+
+    private fun dropContent() {
+        craftingStorage.dropItems()
+            .takeUnless { it.isEmpty }
+            ?.let {
+                ItemScatterer.spawn(
+                    world,
+                    pos.x.toDouble(),
+                    pos.y.toDouble(),
+                    pos.z.toDouble(),
+                    it
+                )
             }
-        }
+    }
+
+    private fun updateForecast() {
+        if (!dirtyForecast) return
         dirtyForecast = false
+        forecastHolder.set(craftingStorage.computeForecast())
     }
 
     override fun getDisplayName(): Text = TranslatableText("block.adicrafter.crafter")
@@ -125,22 +119,14 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
     override fun readNbt(nbt: NbtCompound) {
         super.readNbt(nbt)
 
-        buffer.readNbt(nbt.getCompound(BUFFER_NBT_KEY))
-
-        val newGrid = nbt.getItemStacks(GRID_NBT_KEY)
-        if (!areEqual(grid, newGrid)) {
-            logger.info("read from NBT: {}, {}", toItemString(newGrid))
-            grid = ArrayList(newGrid.map { it.copy() })
-            dirtyRecipe = true
-        }
+        config.readFromNbt(nbt.getList(CONFIG_NBT_KEY, NbtType.COMPOUND))
+        craftingStorage.readFromNbt(nbt.getCompound(CONTENT_NBT_KEY))
     }
 
     override fun writeNbt(nbt: NbtCompound) {
         super.writeNbt(nbt)
 
-        nbt.putItemStacks(GRID_NBT_KEY, grid)
-        nbt.put(BUFFER_NBT_KEY, NbtCompound().also { buffer.writeNbt(it) })
-
-        logger.info("written to NBT: {}, {}", buffer, toItemString(grid))
+        nbt.put(CONFIG_NBT_KEY, config.toNbt())
+        nbt.put(CONTENT_NBT_KEY, craftingStorage.toNbt())
     }
 }

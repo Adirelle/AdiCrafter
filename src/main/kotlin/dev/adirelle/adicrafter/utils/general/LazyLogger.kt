@@ -14,5 +14,5 @@ object lazyLogger : PropertyDelegateProvider<Any, Lazy<Logger>> {
         lazy { LogManager.getLogger(target) }
 
     override fun provideDelegate(thisRef: Any, property: KProperty<*>): Lazy<Logger> =
-        lazy { LogManager.getLogger(thisRef::class) }
+        lazy { LogManager.getLogger(thisRef::class.java) }
 }

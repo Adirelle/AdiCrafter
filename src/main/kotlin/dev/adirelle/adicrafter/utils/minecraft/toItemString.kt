@@ -3,21 +3,19 @@
 package dev.adirelle.adicrafter.utils.extension
 
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
+import net.fabricmc.fabric.api.transfer.v1.storage.base.ResourceAmount
 import net.minecraft.inventory.Inventory
+import net.minecraft.item.Item
 import net.minecraft.item.ItemStack
 
-fun toItemString(stack: ItemStack) =
-    if (stack.isEmpty) "-" else stack.toString()
+fun Item.toItemString() = toString()
+fun ItemStack.toItemString() = toString()
+fun ItemVariant.toItemString() = item.toItemString()
+fun ResourceAmount<ItemVariant>.toItemString() = "%d %s".format(amount, resource.toItemString())
 
-fun toItemString(variant: ItemVariant) =
-    if (variant.isBlank) "-" else variant.item.toString()
+fun Inventory.toItemString() = asList().toItemString()
+fun Array<ItemStack>.toItemString() = asList().toItemString()
 
-fun toItemString(inv: Inventory) =
-    toItemString(inv.toArray())
-
-fun toItemString(arr: Array<ItemStack>) =
-    toItemString(arr.asList())
-
-fun toItemString(stacks: Iterable<ItemStack>) =
-    if (stacks.all { it.isEmpty }) "[--]"
-    else stacks.joinToString("|", "[", "]", transform = { toItemString(it) })
+fun Iterable<ItemStack>.toItemString(): String =
+    if (all { it.isEmpty }) "[--]"
+    else joinToString("|", "[", "]", transform = { it.toItemString() })
