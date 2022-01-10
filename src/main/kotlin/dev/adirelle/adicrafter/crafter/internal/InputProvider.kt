@@ -33,7 +33,6 @@ abstract class AbstractInputProvider : InputProvider {
 
         return neighborApiCaches
             .mapNotNull { (dir, cache) -> cache.find(dir) }
-            .filter { it.supportsExtraction() }
     }
 
 }

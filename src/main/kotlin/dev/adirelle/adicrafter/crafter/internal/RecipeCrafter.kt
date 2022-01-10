@@ -43,7 +43,10 @@ class RecipeCrafter(
         var availableBatchs = batchCount
         for (ingredient in recipe.ingredients) {
             val required = ingredient.amount * batchCount
-            val found = extract(inputs, ingredient.resource, required, tx)
+            var found = extract(inputs, ingredient.resource, required, tx)
+            ingredient.resource.item.recipeRemainder?.let { remainder ->
+                found = min(found, putBack(inputs, ItemVariant.of(remainder), found, tx))
+            }
             availableBatchs = min(availableBatchs, found / ingredient.amount)
         }
         return batchSize * availableBatchs
@@ -55,15 +58,30 @@ class RecipeCrafter(
         maxAmount: Long,
         tx: TransactionContext
     ): Long {
-        val inputIterator = inputs.iterator()
         var extracted = 0L
-        while (extracted < maxAmount && inputIterator.hasNext()) {
-            val viewIterator = inputIterator.next().iterator(tx)
-            while (extracted < maxAmount && viewIterator.hasNext()) {
-                extracted += viewIterator.next().extract(resource, maxAmount - extracted, tx)
+        inputs@ for (input in inputs) {
+            if (!input.supportsExtraction()) continue
+            for (view in input.iterator(tx)) {
+                extracted += view.extract(resource, maxAmount - extracted, tx)
+                if (extracted >= maxAmount) break@inputs
             }
         }
         return extracted
+    }
+
+    private fun putBack(
+        inputs: List<Storage<ItemVariant>>,
+        resource: ItemVariant?,
+        amount: Long,
+        tx: TransactionContext
+    ): Long {
+        var inserted = 0L
+        for (input in inputs) {
+            if (!input.supportsInsertion()) continue
+            inserted += input.insert(resource, amount - inserted, tx)
+            if (inserted >= amount) break
+        }
+        return inserted
     }
 
     private inline fun ifNotEmpty(
