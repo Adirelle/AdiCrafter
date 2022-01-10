@@ -91,18 +91,16 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         updateForecast()
     }
 
-    private fun dropContent() {
-        craftingStorage.dropItems()
-            .takeUnless { it.isEmpty }
-            ?.let {
-                ItemScatterer.spawn(
-                    world,
-                    pos.x.toDouble(),
-                    pos.y.toDouble(),
-                    pos.z.toDouble(),
-                    it
-                )
-            }
+    fun dropContent() {
+        pos.up().let { dropPos ->
+            ItemScatterer.spawn(
+                world,
+                dropPos.x.toDouble(),
+                dropPos.y.toDouble(),
+                dropPos.z.toDouble(),
+                craftingStorage.dropItems()
+            )
+        }
     }
 
     private fun updateForecast() {

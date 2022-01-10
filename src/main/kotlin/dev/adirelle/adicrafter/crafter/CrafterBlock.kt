@@ -34,6 +34,9 @@ class CrafterBlock : BlockWithEntity(
         }
     }
 
+    private fun getBlockEntity(world: World, pos: BlockPos): CrafterBlockEntity? =
+        (world as? ServerWorld)?.let { (world.getBlockEntity(pos) as? CrafterBlockEntity) }
+
     override fun neighborUpdate(
         state: BlockState,
         world: World,
@@ -42,7 +45,20 @@ class CrafterBlock : BlockWithEntity(
         fromPos: BlockPos,
         notify: Boolean
     ) {
-        (world.getBlockEntity(pos) as? CrafterBlockEntity)?.onNeighborUpdate()
+        getBlockEntity(world, pos)?.onNeighborUpdate()
+    }
+
+    override fun onStateReplaced(
+        state: BlockState,
+        world: World,
+        pos: BlockPos,
+        newState: BlockState,
+        moved: Boolean
+    ) {
+        if (!state.isOf(newState.block)) {
+            getBlockEntity(world, pos)?.dropContent()
+            super.onStateReplaced(state, world, pos, newState, moved)
+        }
     }
 
     override fun onUse(
