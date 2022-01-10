@@ -84,6 +84,4 @@ class CraftingStorage(private val crafter: RecipeCrafter) :
         NbtCompound().apply {
             content.writeToNbt(this)
         }
-
-    data class Snapshot(val content: ResourceAmount<ItemVariant>, val changed: Boolean)
 }
