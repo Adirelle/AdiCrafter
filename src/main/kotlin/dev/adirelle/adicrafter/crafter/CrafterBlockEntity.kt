@@ -49,7 +49,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
     private val crafter = RecipeCrafter(config::recipe, inputProvider)
     private val craftingStorage = CraftingStorage(crafter)
 
-    private var dirtyForecast = false
+    private var updateDelay = 0
     private val forecastHolder = ObservableValueHolder<ResourceAmount<ItemVariant>>(EMPTY_ITEM_AMOUNT)
 
     var grid by config::grid
@@ -62,12 +62,20 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         config.observeGrid { markDirty() }
         config.observeRecipe {
             dropContent()
-            dirtyForecast = true
+            markForeCastDirty()
         }
         craftingStorage.observeContent {
-            dirtyForecast = true
             markDirty()
         }
+    }
+
+    private fun markForeCastDirty() {
+        updateDelay = 0
+    }
+
+    override fun markDirty() {
+        markForeCastDirty()
+        super.markDirty()
     }
 
     fun observeGrid(callback: Observer<Grid>) = config.observeGrid(callback)
@@ -77,13 +85,13 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
     fun observeContent(callback: Observer<ResourceAmount<ItemVariant>>) = craftingStorage.observeContent(callback)
 
     fun observeForecast(callback: Observer<ResourceAmount<ItemVariant>>): AutoCloseable {
-        dirtyForecast = true
+        markForeCastDirty()
         return forecastHolder.observeValue(callback)
     }
 
     fun onNeighborUpdate() {
         logger.info("neighbor updated")
-        dirtyForecast = true
+        markForeCastDirty()
     }
 
     fun tick(world: World) {
@@ -104,9 +112,19 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
     }
 
     private fun updateForecast() {
-        if (!dirtyForecast) return
-        dirtyForecast = false
-        forecastHolder.set(craftingStorage.computeForecast())
+        if (--updateDelay > 0) return
+        updateDelay = 60
+
+        if (recipe.isEmpty) {
+            forecastHolder.set(EMPTY_ITEM_AMOUNT)
+            return
+        }
+        withOuterTransaction { tx ->
+            val res = craftingStorage.resource
+            val amount = craftingStorage.extract(recipe.output.resource, recipe.output.amount, tx)
+            tx.abort()
+            forecastHolder.set(res.toAmount(amount))
+        }
     }
 
     override fun getDisplayName(): Text = TranslatableText("block.adicrafter.crafter")
