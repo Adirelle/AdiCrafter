@@ -54,7 +54,7 @@ class CraftingStorage(private val crafter: RecipeCrafter) :
         updateSnapshots(tx)
         var available = content.amount
         if (available < maxAmount) {
-            available += crafter.craft(maxAmount - available, tx)
+            available += crafter.extract(resource, maxAmount - available, tx)
         }
         if (available <= maxAmount) {
             contentHolder.set(EMPTY_ITEM_AMOUNT)

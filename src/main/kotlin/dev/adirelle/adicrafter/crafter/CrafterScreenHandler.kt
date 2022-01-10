@@ -101,7 +101,7 @@ class CrafterScreenHandler(
         }
     }
 
-    private fun onRecipeChanged(recipe: OptionalRecipe) {
+    private fun onRecipeChanged(recipe: Recipe) {
         setStack(result, 0, recipe.output)
     }
 

@@ -2,13 +2,18 @@
 
 package dev.adirelle.adicrafter.crafter
 
-import dev.adirelle.adicrafter.crafter.internal.*
+import dev.adirelle.adicrafter.crafter.internal.CraftingConfig
+import dev.adirelle.adicrafter.crafter.internal.CraftingStorage
+import dev.adirelle.adicrafter.crafter.internal.Grid
+import dev.adirelle.adicrafter.crafter.internal.StandardIngredientExtractor
 import dev.adirelle.adicrafter.utils.Observer
 import dev.adirelle.adicrafter.utils.extension.toAmount
 import dev.adirelle.adicrafter.utils.extension.withOuterTransaction
 import dev.adirelle.adicrafter.utils.general.ObservableValueHolder
 import dev.adirelle.adicrafter.utils.general.extensions.EMPTY_ITEM_AMOUNT
 import dev.adirelle.adicrafter.utils.general.lazyLogger
+import net.fabricmc.fabric.api.lookup.v1.block.BlockApiCache
+import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage
 import net.fabricmc.fabric.api.transfer.v1.storage.base.ResourceAmount
@@ -19,10 +24,12 @@ import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.entity.player.PlayerInventory
 import net.minecraft.nbt.NbtCompound
 import net.minecraft.screen.NamedScreenHandlerFactory
+import net.minecraft.server.world.ServerWorld
 import net.minecraft.text.Text
 import net.minecraft.text.TranslatableText
 import net.minecraft.util.ItemScatterer
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.Direction
 import net.minecraft.world.World
 
 class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
@@ -43,12 +50,9 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
     private var config = CraftingConfig()
 
-    private val inputProvider: InputProvider = object : AbstractInputProvider() {
-        override val world by this@CrafterBlockEntity::world
-        override val pos by this@CrafterBlockEntity::pos
-    }
+    private val extractor = StandardIngredientExtractor(this::findStorages)
+    private val crafter = RecipeCrafter(config::recipe, extractor)
 
-    private val crafter = RecipeCrafter(config::recipe, inputProvider)
     private val craftingStorage = CraftingStorage(crafter)
 
     private var updateDelay = 0
@@ -82,7 +86,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
     fun observeGrid(callback: Observer<Grid>) = config.observeGrid(callback)
 
-    fun observeRecipe(callback: Observer<OptionalRecipe>) = config.observeRecipe(callback)
+    fun observeRecipe(callback: Observer<Recipe>) = config.observeRecipe(callback)
 
     fun observeContent(callback: Observer<ResourceAmount<ItemVariant>>) = craftingStorage.observeContent(callback)
 
@@ -128,6 +132,19 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
             forecastHolder.set(res.toAmount(amount))
         }
     }
+
+    private val apiCaches: Map<Direction, BlockApiCache<Storage<ItemVariant>, Direction>> by lazy {
+        (world as? ServerWorld)?.let { world ->
+            buildMap {
+                for (direction in Direction.values()) {
+                    put(direction, BlockApiCache.create(ItemStorage.SIDED, world, pos.offset(direction)))
+                }
+            }
+        } ?: mapOf()
+    }
+
+    private fun findStorages(): List<Storage<ItemVariant>> =
+        apiCaches.entries.mapNotNull { (direction, cache) -> cache.find(direction) }
 
     override fun getDisplayName(): Text = TranslatableText("block.adicrafter.crafter")
 

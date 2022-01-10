@@ -2,7 +2,10 @@
 
 package dev.adirelle.adicrafter.crafter.internal
 
-import dev.adirelle.adicrafter.crafter.OptionalRecipe
+import dev.adirelle.adicrafter.crafter.EMPTY_RECIPE
+import dev.adirelle.adicrafter.crafter.ExactRecipe
+import dev.adirelle.adicrafter.crafter.FuzzyRecipe
+import dev.adirelle.adicrafter.crafter.Recipe
 import dev.adirelle.adicrafter.utils.extension.copyFrom
 import dev.adirelle.adicrafter.utils.general.extensions.toStack
 import dev.adirelle.adicrafter.utils.general.memoize
@@ -12,7 +15,9 @@ import net.minecraft.recipe.RecipeType
 import net.minecraft.screen.ScreenHandler
 import net.minecraft.world.World
 
-class RecipeResolver private constructor(private val world: World) {
+class RecipeResolver private constructor(
+    private val world: World
+) {
 
     companion object {
 
@@ -29,11 +34,13 @@ class RecipeResolver private constructor(private val world: World) {
 
     private val craftingGrid by lazy { CraftingInventory(dummyScreenHandler, 3, 3) }
 
-    fun resolve(grid: Grid): OptionalRecipe {
+    fun resolve(grid: Grid, fuzzy: Boolean): Recipe {
         craftingGrid.copyFrom(grid.map { it.toStack() })
-        return OptionalRecipe.of(
-            world.recipeManager.getFirstMatch(RecipeType.CRAFTING, craftingGrid, world),
-            grid.map { it.resource }
-        )
+        val result = world.recipeManager.getFirstMatch(RecipeType.CRAFTING, craftingGrid, world)
+        return when {
+            result.isEmpty -> EMPTY_RECIPE
+            fuzzy          -> FuzzyRecipe(result.get())
+            else           -> ExactRecipe(result.get(), grid.map { it.resource })
+        }
     }
 }
