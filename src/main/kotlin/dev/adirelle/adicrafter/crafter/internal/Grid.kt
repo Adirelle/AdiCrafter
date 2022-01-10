@@ -2,12 +2,12 @@
 
 package dev.adirelle.adicrafter.crafter.internal
 
-import dev.adirelle.adicrafter.utils.areEqual
-import dev.adirelle.adicrafter.utils.extension.toAmount
-import dev.adirelle.adicrafter.utils.general.extensions.EMPTY_ITEM_AMOUNT
-import dev.adirelle.adicrafter.utils.general.extensions.resourceAmountFromNbt
-import dev.adirelle.adicrafter.utils.general.extensions.toNbt
+import dev.adirelle.adicrafter.utils.general.areEqual
 import dev.adirelle.adicrafter.utils.minecraft.NbtPersistable
+import dev.adirelle.adicrafter.utils.minecraft.extensions.EMPTY_ITEM_AMOUNT
+import dev.adirelle.adicrafter.utils.minecraft.extensions.resourceAmountFromNbt
+import dev.adirelle.adicrafter.utils.minecraft.extensions.toAmount
+import dev.adirelle.adicrafter.utils.minecraft.extensions.toNbt
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.base.ResourceAmount
 import net.minecraft.item.ItemStack

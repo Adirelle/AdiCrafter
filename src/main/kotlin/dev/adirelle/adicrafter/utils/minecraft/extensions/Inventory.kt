@@ -1,7 +1,7 @@
-package dev.adirelle.adicrafter.utils.extension
+package dev.adirelle.adicrafter.utils.minecraft.extensions
 
 import com.google.common.base.Preconditions
-import dev.adirelle.adicrafter.utils.expectExactSize
+import dev.adirelle.adicrafter.utils.general.expectExactSize
 import dev.adirelle.adicrafter.utils.general.memoize
 import net.minecraft.inventory.Inventory
 import net.minecraft.item.ItemStack

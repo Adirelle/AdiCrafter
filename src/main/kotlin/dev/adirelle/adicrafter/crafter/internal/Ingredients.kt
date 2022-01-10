@@ -2,7 +2,7 @@
 
 package dev.adirelle.adicrafter.crafter.internal
 
-import dev.adirelle.adicrafter.utils.extension.withNestedTransaction
+import dev.adirelle.adicrafter.utils.minecraft.withNestedTransaction
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage
 import net.fabricmc.fabric.api.transfer.v1.storage.StorageView

@@ -1,4 +1,4 @@
-package dev.adirelle.adicrafter.utils.extension
+package dev.adirelle.adicrafter.utils.general.extensions
 
 import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReadWriteLock

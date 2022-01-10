@@ -3,8 +3,8 @@ package dev.adirelle.adicrafter.crafter.internal
 import dev.adirelle.adicrafter.crafter.EMPTY_RECIPE
 import dev.adirelle.adicrafter.crafter.Recipe
 import dev.adirelle.adicrafter.crafter.internal.Grid.Companion
-import dev.adirelle.adicrafter.utils.Observer
 import dev.adirelle.adicrafter.utils.general.ObservableValueHolder
+import dev.adirelle.adicrafter.utils.general.Observer
 import dev.adirelle.adicrafter.utils.minecraft.NbtPersistable
 import net.minecraft.nbt.NbtList
 import net.minecraft.world.World

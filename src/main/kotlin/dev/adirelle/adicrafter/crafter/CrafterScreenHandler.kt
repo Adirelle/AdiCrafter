@@ -3,9 +3,13 @@
 package dev.adirelle.adicrafter.crafter
 
 import dev.adirelle.adicrafter.crafter.internal.Grid
-import dev.adirelle.adicrafter.utils.expectExactSize
-import dev.adirelle.adicrafter.utils.extension.*
-import dev.adirelle.adicrafter.utils.general.extensions.toStack
+import dev.adirelle.adicrafter.utils.general.expectExactSize
+import dev.adirelle.adicrafter.utils.general.extensions.close
+import dev.adirelle.adicrafter.utils.minecraft.extensions.asList
+import dev.adirelle.adicrafter.utils.minecraft.extensions.canExtract
+import dev.adirelle.adicrafter.utils.minecraft.extensions.get
+import dev.adirelle.adicrafter.utils.minecraft.extensions.toStack
+import dev.adirelle.adicrafter.utils.minecraft.withOuterTransaction
 import io.github.cottonmc.cotton.gui.SyncedGuiDescription
 import io.github.cottonmc.cotton.gui.widget.WGridPanel
 import io.github.cottonmc.cotton.gui.widget.WItemSlot

@@ -1,6 +1,6 @@
 @file:Suppress("UnstableApiUsage")
 
-package dev.adirelle.adicrafter.utils.extension
+package dev.adirelle.adicrafter.utils.minecraft
 
 import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext

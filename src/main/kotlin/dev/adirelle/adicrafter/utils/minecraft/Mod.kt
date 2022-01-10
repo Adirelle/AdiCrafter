@@ -1,6 +1,6 @@
 @file:Suppress("MemberVisibilityCanBePrivate", "PropertyName")
 
-package dev.adirelle.adicrafter.utils.mod
+package dev.adirelle.adicrafter.utils.minecraft
 
 import com.mojang.datafixers.types.Type
 import dev.adirelle.adicrafter.utils.general.lazyLogger

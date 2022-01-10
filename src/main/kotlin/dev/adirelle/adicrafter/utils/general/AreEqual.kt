@@ -1,4 +1,4 @@
-package dev.adirelle.adicrafter.utils
+package dev.adirelle.adicrafter.utils.general
 
 /**
  * Compare Iterables by size and content

@@ -1,8 +1,5 @@
 package dev.adirelle.adicrafter.utils.general
 
-import dev.adirelle.adicrafter.utils.Observable
-import dev.adirelle.adicrafter.utils.Observer
-import dev.adirelle.adicrafter.utils.areEqual
 import net.minecraft.nbt.NbtElement
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty

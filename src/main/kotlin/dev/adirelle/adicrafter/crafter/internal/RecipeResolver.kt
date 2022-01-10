@@ -6,9 +6,9 @@ import dev.adirelle.adicrafter.crafter.EMPTY_RECIPE
 import dev.adirelle.adicrafter.crafter.ExactRecipe
 import dev.adirelle.adicrafter.crafter.FuzzyRecipe
 import dev.adirelle.adicrafter.crafter.Recipe
-import dev.adirelle.adicrafter.utils.extension.copyFrom
-import dev.adirelle.adicrafter.utils.general.extensions.toStack
 import dev.adirelle.adicrafter.utils.general.memoize
+import dev.adirelle.adicrafter.utils.minecraft.extensions.copyFrom
+import dev.adirelle.adicrafter.utils.minecraft.extensions.toStack
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.inventory.CraftingInventory
 import net.minecraft.recipe.RecipeType

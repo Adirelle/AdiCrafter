@@ -3,14 +3,12 @@
 package dev.adirelle.adicrafter.crafter.internal
 
 import dev.adirelle.adicrafter.crafter.RecipeCrafter
-import dev.adirelle.adicrafter.utils.Observable
-import dev.adirelle.adicrafter.utils.Observer
-import dev.adirelle.adicrafter.utils.extension.canExtract
-import dev.adirelle.adicrafter.utils.extension.toAmount
+import dev.adirelle.adicrafter.utils.general.Observable
+import dev.adirelle.adicrafter.utils.general.Observer
 import dev.adirelle.adicrafter.utils.general.ValueHolder
-import dev.adirelle.adicrafter.utils.general.extensions.*
 import dev.adirelle.adicrafter.utils.general.lazyLogger
 import dev.adirelle.adicrafter.utils.minecraft.NbtPersistable
+import dev.adirelle.adicrafter.utils.minecraft.extensions.*
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.base.ResourceAmount
 import net.fabricmc.fabric.api.transfer.v1.storage.base.SingleSlotStorage

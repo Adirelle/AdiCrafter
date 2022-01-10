@@ -3,7 +3,7 @@
 package dev.adirelle.adicrafter.crafter
 
 import dev.adirelle.adicrafter.AdiCrafter
-import dev.adirelle.adicrafter.utils.mod.ModFeature
+import dev.adirelle.adicrafter.utils.minecraft.ModFeature
 import net.fabricmc.api.EnvType.CLIENT
 import net.fabricmc.api.Environment
 import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage

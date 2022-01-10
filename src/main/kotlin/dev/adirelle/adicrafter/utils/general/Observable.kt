@@ -1,7 +1,7 @@
-package dev.adirelle.adicrafter.utils
+package dev.adirelle.adicrafter.utils.general
 
-import dev.adirelle.adicrafter.utils.extension.readLocked
-import dev.adirelle.adicrafter.utils.extension.writeLocked
+import dev.adirelle.adicrafter.utils.general.extensions.readLocked
+import dev.adirelle.adicrafter.utils.general.extensions.writeLocked
 import java.util.concurrent.locks.ReentrantReadWriteLock
 
 fun interface Observer<in T> {
