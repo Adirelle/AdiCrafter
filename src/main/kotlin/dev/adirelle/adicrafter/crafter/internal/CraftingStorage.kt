@@ -9,6 +9,7 @@ import dev.adirelle.adicrafter.utils.extension.canExtract
 import dev.adirelle.adicrafter.utils.extension.toAmount
 import dev.adirelle.adicrafter.utils.general.ValueHolder
 import dev.adirelle.adicrafter.utils.general.extensions.*
+import dev.adirelle.adicrafter.utils.general.lazyLogger
 import dev.adirelle.adicrafter.utils.minecraft.NbtPersistable
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.base.ResourceAmount
@@ -20,17 +21,13 @@ import net.minecraft.nbt.NbtCompound
 import kotlin.math.max
 
 class CraftingStorage(private val crafter: RecipeCrafter) :
-    SnapshotParticipant<CraftingStorage.Snapshot>(),
+    SnapshotParticipant<ResourceAmount<ItemVariant>>(),
     SingleSlotStorage<ItemVariant>,
     NbtPersistable<NbtCompound> {
 
-    private var contentChanged = false
-    private val contentHolder: ValueHolder<ResourceAmount<ItemVariant>> =
-        object : ValueHolder<ResourceAmount<ItemVariant>>(EMPTY_ITEM_AMOUNT) {
-            override fun onValueChanged(oldValue: ResourceAmount<ItemVariant>, newValue: ResourceAmount<ItemVariant>) {
-                contentChanged = true
-            }
-        }
+    private val logger by lazyLogger
+
+    private val contentHolder = ValueHolder<ResourceAmount<ItemVariant>>(EMPTY_ITEM_AMOUNT)
     private val contentObservable = Observable<ResourceAmount<ItemVariant>>()
 
     val content by contentHolder
@@ -39,18 +36,14 @@ class CraftingStorage(private val crafter: RecipeCrafter) :
     fun observeContent(observer: Observer<ResourceAmount<ItemVariant>>) =
         contentObservable.addObserver(observer)
 
-    override fun createSnapshot() = Snapshot(content, contentChanged)
+    override fun createSnapshot() = content
 
-    override fun readSnapshot(snapshot: Snapshot) {
-        contentHolder.set(snapshot.content)
-        contentChanged = snapshot.changed
+    override fun readSnapshot(snapshot: ResourceAmount<ItemVariant>) {
+        contentHolder.set(snapshot)
     }
 
     override fun onFinalCommit() {
-        if (contentChanged) {
-            contentChanged = false
-            contentObservable.notify(content)
-        }
+        contentObservable.notify(content)
     }
 
     override fun supportsInsertion() = false
@@ -67,7 +60,7 @@ class CraftingStorage(private val crafter: RecipeCrafter) :
             contentHolder.set(EMPTY_ITEM_AMOUNT)
             return available
         }
-        contentHolder.set(content.withAmount(available - maxAmount))
+        contentHolder.set(resource.toAmount(available - maxAmount))
         return maxAmount
     }
 
@@ -77,7 +70,7 @@ class CraftingStorage(private val crafter: RecipeCrafter) :
     override fun getCapacity() = recipe.output.amount
 
     fun dropItems(): ItemStack {
-        if (content.isEmpty() || content.resource == recipe.output.resource) return ItemStack.EMPTY
+        if (content.isEmpty()) return ItemStack.EMPTY
         val stack = content.toStack()
         contentHolder.set(EMPTY_ITEM_AMOUNT)
         return stack
