@@ -3,10 +3,12 @@
 package dev.adirelle.adicrafter.utils.general.extensions
 
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
+import net.fabricmc.fabric.api.transfer.v1.storage.TransferVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.base.ResourceAmount
+import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NbtCompound
 
-fun ResourceAmount<ItemVariant>.isEmpty() = resource.isBlank || amount == 0L
+fun <T : TransferVariant<*>> ResourceAmount<T>.isEmpty() = resource.isBlank || amount == 0L
 
 fun ResourceAmount<ItemVariant>.withAmount(amount: Long) =
     if (amount <= 0) EMPTY_ITEM_AMOUNT
@@ -22,7 +24,7 @@ operator fun ResourceAmount<ItemVariant>.compareTo(amount: Long) =
 val EMPTY_ITEM_AMOUNT = ResourceAmount(ItemVariant.blank(), 0L)
 
 fun ResourceAmount<ItemVariant>.toStack() =
-    resource.toStack(amount.toInt())
+    if (isEmpty()) ItemStack.EMPTY else resource.toStack(amount.toInt())
 
 fun resourceAmountFromNbt(nbt: NbtCompound): ResourceAmount<ItemVariant> {
     return ResourceAmount(
