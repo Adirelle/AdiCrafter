@@ -4,6 +4,8 @@ package dev.adirelle.adicrafter.crafter
 
 import dev.adirelle.adicrafter.crafter.internal.*
 import dev.adirelle.adicrafter.utils.Observer
+import dev.adirelle.adicrafter.utils.extension.toAmount
+import dev.adirelle.adicrafter.utils.extension.withOuterTransaction
 import dev.adirelle.adicrafter.utils.general.ObservableValueHolder
 import dev.adirelle.adicrafter.utils.general.extensions.EMPTY_ITEM_AMOUNT
 import dev.adirelle.adicrafter.utils.general.lazyLogger

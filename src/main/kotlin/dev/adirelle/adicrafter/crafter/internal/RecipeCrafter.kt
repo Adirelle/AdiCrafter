@@ -4,7 +4,6 @@ package dev.adirelle.adicrafter.crafter
 
 import dev.adirelle.adicrafter.crafter.internal.InputProvider
 import dev.adirelle.adicrafter.utils.extension.withNestedTransaction
-import dev.adirelle.adicrafter.utils.extension.withOuterTransaction
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
@@ -31,15 +30,6 @@ class RecipeCrafter(
                 crafted
             }
             craftInternal(recipe, inputs, available, tx)
-        }
-
-    fun simulateCraft(maxAmount: Long): Long =
-        ifNotEmpty { recipe, inputs ->
-            withOuterTransaction { tx ->
-                craftInternal(recipe, inputs, maxAmount, tx).also {
-                    tx.abort()
-                }
-            }
         }
 
     private fun craftInternal(

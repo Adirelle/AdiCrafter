@@ -83,15 +83,6 @@ class CraftingStorage(private val crafter: RecipeCrafter) :
         return stack
     }
 
-    fun computeForecast(): ResourceAmount<ItemVariant> {
-        val maxAmount = recipe.output.amount
-        var forecastAmount = content.amount
-        if (forecastAmount < maxAmount) {
-            forecastAmount += crafter.simulateCraft(maxAmount - forecastAmount)
-        }
-        return recipe.output.resource.toAmount(forecastAmount)
-    }
-
     fun readFromNbt(nbt: NbtCompound) {
         contentHolder.readFromNbt(nbt, ::resourceAmountFromNbt, EMPTY_ITEM_AMOUNT)
     }
