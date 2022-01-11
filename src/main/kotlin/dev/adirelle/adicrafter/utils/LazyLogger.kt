@@ -1,4 +1,4 @@
-package dev.adirelle.adicrafter.utils.general
+package dev.adirelle.adicrafter.utils
 
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger

@@ -1,4 +1,4 @@
-package dev.adirelle.adicrafter.utils.general.extensions
+package dev.adirelle.adicrafter.utils.extensions
 
 fun Iterable<AutoCloseable>.close() =
     forEach { it.close() }

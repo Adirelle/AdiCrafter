@@ -1,12 +1,13 @@
 @file:Suppress("UnstableApiUsage")
 
-package dev.adirelle.adicrafter.utils.minecraft.extensions
+package dev.adirelle.adicrafter.utils.extensions
 
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.TransferVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.base.ResourceAmount
 import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NbtCompound
+import net.minecraft.network.PacketByteBuf
 
 fun <T : TransferVariant<*>> ResourceAmount<T>.isEmpty() = resource.isBlank || amount == 0L
 
@@ -40,3 +41,14 @@ fun ResourceAmount<ItemVariant>.writeToNbt(nbt: NbtCompound) {
 
 fun ResourceAmount<ItemVariant>.toNbt() =
     NbtCompound().also { writeToNbt(it) }
+
+fun ResourceAmount<ItemVariant>.toPacket(buf: PacketByteBuf) {
+    resource.toPacket(buf)
+    buf.writeLong(amount)
+}
+
+fun resourceAmountFromPacket(buf: PacketByteBuf): ResourceAmount<ItemVariant> {
+    val resource = ItemVariant.fromPacket(buf)
+    val amount = buf.readLong()
+    return ResourceAmount<ItemVariant>(resource, amount)
+}

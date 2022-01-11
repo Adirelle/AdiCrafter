@@ -1,8 +1,8 @@
 @file:Suppress("UnstableApiUsage")
 
-package dev.adirelle.adicrafter.utils.minecraft
+package dev.adirelle.adicrafter.utils
 
-import dev.adirelle.adicrafter.utils.minecraft.extensions.asList
+import dev.adirelle.adicrafter.utils.extensions.asList
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.base.ResourceAmount
 import net.minecraft.inventory.Inventory

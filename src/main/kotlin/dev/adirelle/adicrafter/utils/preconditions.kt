@@ -1,4 +1,4 @@
-package dev.adirelle.adicrafter.utils.general
+package dev.adirelle.adicrafter.utils
 
 import com.google.common.base.Strings
 

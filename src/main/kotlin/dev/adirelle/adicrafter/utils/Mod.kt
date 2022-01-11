@@ -1,9 +1,8 @@
 @file:Suppress("MemberVisibilityCanBePrivate", "PropertyName")
 
-package dev.adirelle.adicrafter.utils.minecraft
+package dev.adirelle.adicrafter.utils
 
 import com.mojang.datafixers.types.Type
-import dev.adirelle.adicrafter.utils.general.lazyLogger
 import net.fabricmc.api.*
 import net.fabricmc.api.EnvType.CLIENT
 import net.fabricmc.api.EnvType.SERVER

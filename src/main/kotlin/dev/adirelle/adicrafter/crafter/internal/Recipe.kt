@@ -4,8 +4,8 @@ package dev.adirelle.adicrafter.crafter
 
 import dev.adirelle.adicrafter.AdiCrafter
 import dev.adirelle.adicrafter.crafter.internal.IngredientMatcher
-import dev.adirelle.adicrafter.utils.minecraft.extensions.EMPTY_ITEM_AMOUNT
-import dev.adirelle.adicrafter.utils.minecraft.extensions.toAmount
+import dev.adirelle.adicrafter.utils.extensions.EMPTY_ITEM_AMOUNT
+import dev.adirelle.adicrafter.utils.extensions.toAmount
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.base.ResourceAmount
 import net.minecraft.recipe.CraftingRecipe

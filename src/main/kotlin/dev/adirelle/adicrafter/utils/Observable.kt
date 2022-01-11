@@ -1,7 +1,7 @@
-package dev.adirelle.adicrafter.utils.general
+package dev.adirelle.adicrafter.utils
 
-import dev.adirelle.adicrafter.utils.general.extensions.readLocked
-import dev.adirelle.adicrafter.utils.general.extensions.writeLocked
+import dev.adirelle.adicrafter.utils.extensions.readLocked
+import dev.adirelle.adicrafter.utils.extensions.writeLocked
 import java.util.concurrent.locks.ReentrantReadWriteLock
 
 fun interface Observer<in T> {
@@ -9,12 +9,23 @@ fun interface Observer<in T> {
     fun notify(message: T)
 }
 
-class Observable<T> : Observer<T> {
+interface Observable<T> : Observer<T> {
+
+    fun addObserver(observer: Observer<T>): AutoCloseable
+
+    companion object {
+
+        fun <T> create(): Observable<T> =
+            SimpleObservable<T>()
+    }
+}
+
+class SimpleObservable<T> : Observable<T> {
 
     private val observers = ArrayList<Observer<T>>()
     private val lock = ReentrantReadWriteLock()
 
-    fun addObserver(observer: Observer<T>): AutoCloseable {
+    override fun addObserver(observer: Observer<T>): AutoCloseable {
         lock.writeLocked {
             observers.add(observer)
         }
