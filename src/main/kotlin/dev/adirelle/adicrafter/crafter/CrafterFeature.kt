@@ -9,7 +9,7 @@ import net.fabricmc.api.Environment
 import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage
 import net.minecraft.item.ItemGroup
 
-object Crafter : ModFeature(AdiCrafter, "crafter") {
+object CrafterFeature : ModFeature(AdiCrafter, "crafter") {
 
     val BLOCK = register(CrafterBlock())
 
@@ -24,7 +24,8 @@ object Crafter : ModFeature(AdiCrafter, "crafter") {
     @Environment(CLIENT)
     val SCREEN = register(SCREEN_HANDLER_TYPE, ::CrafterScreen)
 
-    init {
+    override fun onInitialize() {
+        super.onInitialize()
         ItemStorage.SIDED.registerForBlockEntity({ blockEntity, _ -> blockEntity.storage }, BLOCK_ENTITY_TYPE)
     }
 }

@@ -2,135 +2,178 @@
 
 package dev.adirelle.adicrafter.crafter
 
-import dev.adirelle.adicrafter.crafter.internal.CraftingConfig
-import dev.adirelle.adicrafter.crafter.internal.CraftingStorage
-import dev.adirelle.adicrafter.crafter.internal.Grid
-import dev.adirelle.adicrafter.crafter.internal.StandardIngredientExtractor
-import dev.adirelle.adicrafter.utils.ObservableValueHolder
-import dev.adirelle.adicrafter.utils.Observer
-import dev.adirelle.adicrafter.utils.extensions.EMPTY_ITEM_AMOUNT
-import dev.adirelle.adicrafter.utils.extensions.toAmount
+import dev.adirelle.adicrafter.crafter.recipe.Grid
+import dev.adirelle.adicrafter.crafter.recipe.RecipeResolver
+import dev.adirelle.adicrafter.utils.extensions.toNbt
+import dev.adirelle.adicrafter.utils.extensions.toVariant
 import dev.adirelle.adicrafter.utils.lazyLogger
 import dev.adirelle.adicrafter.utils.withOuterTransaction
 import net.fabricmc.fabric.api.lookup.v1.block.BlockApiCache
 import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage
-import net.fabricmc.fabric.api.transfer.v1.storage.base.ResourceAmount
+import net.fabricmc.fabric.api.transfer.v1.storage.StorageView
+import net.fabricmc.fabric.api.transfer.v1.storage.base.CombinedStorage
+import net.fabricmc.fabric.api.transfer.v1.storage.base.SingleSlotStorage
+import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
+import net.fabricmc.fabric.api.transfer.v1.transaction.base.SnapshotParticipant
+import net.fabricmc.fabric.api.util.NbtType
 import net.minecraft.block.BlockState
+import net.minecraft.block.InventoryProvider
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.entity.player.PlayerInventory
+import net.minecraft.inventory.SidedInventory
+import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NbtCompound
 import net.minecraft.screen.NamedScreenHandlerFactory
+import net.minecraft.screen.ScreenHandler
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.text.Text
 import net.minecraft.text.TranslatableText
 import net.minecraft.util.ItemScatterer
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Direction
-import net.minecraft.world.World
+import net.minecraft.world.WorldAccess
 
 class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
-    BlockEntity(Crafter.BLOCK_ENTITY_TYPE, pos, state),
+    BlockEntity(CrafterFeature.BLOCK_ENTITY_TYPE, pos, state),
+    InventoryProvider,
     NamedScreenHandlerFactory {
 
     companion object {
 
-        private const val CONFIG_NBT_KEY = "Config"
+        private const val GRID_NBT_KEY = "Grid"
         private const val CONTENT_NBT_KEY = "Content"
+        private const val FUZZY_NBT_KEY = "Fuzzy"
 
         const val GRID_SIZE = Grid.SIZE
         const val GRID_WIDTH = Grid.WIDTH
         const val GRID_HEIGHT = Grid.HEIGHT
+
+        const val OUTPUT_SLOT = GRID_SIZE
+        const val RESULT_SLOT = OUTPUT_SLOT + 1
+        const val CONTENT_SLOT = RESULT_SLOT + 1
+        const val INVENTORY_SIZE = CONTENT_SLOT + 1
     }
 
     private val logger by lazyLogger
 
-    private var config = CraftingConfig()
+    val inventory = InventoryAdapter()
+    val storage = StorageAdapter()
 
-    private val extractor = StandardIngredientExtractor(this::findStorages)
-    private val crafter = RecipeCrafter(config::recipe, extractor)
+    private var grid = Grid.empty()
+    private var fuzzyFlag: Boolean = false
 
-    private val craftingStorage = CraftingStorage(crafter)
+    private var recipe: Recipe = Recipe.EMPTY
+    private var dirtyRecipe = false
 
-    private var updateDelay = 0
-    private val forecastHolder = ObservableValueHolder<ResourceAmount<ItemVariant>>(EMPTY_ITEM_AMOUNT)
+    private var content: ItemStack = ItemStack.EMPTY
 
-    var grid by config::grid
-    val recipe by config::recipe
-    val content by craftingStorage::content
-    val forecast by forecastHolder
-    val storage: Storage<ItemVariant> by this::craftingStorage
+    private var forecast: ItemStack = ItemStack.EMPTY
+    private var dirtyForecast = false
 
-    init {
-        config.observeGrid { markDirty() }
-        config.observeRecipe {
-            dropContent()
-            markForeCastDirty()
+    private val openScreenHandlers = ArrayList<ScreenHandler>(2)
+
+    override fun getInventory(state: BlockState, world: WorldAccess, pos: BlockPos): SidedInventory =
+        inventory
+
+    override fun getDisplayName(): Text = TranslatableText("block.adicrafter.crafter")
+
+    override fun createMenu(syncId: Int, playerInventory: PlayerInventory, player: PlayerEntity): ScreenHandler {
+        val handler = CrafterScreenHandler(syncId, playerInventory, this.inventory, this)
+        openScreenHandlers.add(handler)
+        return handler
+    }
+
+    fun onScreenHandlerClosed(handler: ScreenHandler) {
+        openScreenHandlers.remove(handler)
+    }
+
+    override fun readNbt(nbt: NbtCompound) {
+        super.readNbt(nbt)
+
+        grid = Grid.fromNbt(nbt.getList(GRID_NBT_KEY, NbtType.COMPOUND))
+        content = ItemStack.fromNbt(nbt.getCompound(CONTENT_NBT_KEY))
+        fuzzyFlag = nbt.getBoolean(FUZZY_NBT_KEY)
+
+        dirtyRecipe = true
+        dirtyForecast = true
+    }
+
+    override fun writeNbt(nbt: NbtCompound) {
+        super.writeNbt(nbt)
+
+        nbt.put(GRID_NBT_KEY, grid.toNbt())
+        nbt.put(CONTENT_NBT_KEY, content.toNbt())
+        nbt.putBoolean(FUZZY_NBT_KEY, fuzzyFlag)
+    }
+
+    fun tick() {
+        val recipeUpdated = updateRecipe()
+        val forecastUpdated = updateForecast()
+        if (recipeUpdated || forecastUpdated) {
+            notifyScreenHandlers()
         }
-        craftingStorage.observeContent {
-            markDirty()
-        }
-    }
-
-    private fun markForeCastDirty() {
-        updateDelay = 0
-    }
-
-    override fun markDirty() {
-        markForeCastDirty()
-        super.markDirty()
-    }
-
-    fun observeGrid(callback: Observer<Grid>) = config.observeGrid(callback)
-
-    fun observeRecipe(callback: Observer<Recipe>) = config.observeRecipe(callback)
-
-    fun observeContent(callback: Observer<ResourceAmount<ItemVariant>>) = craftingStorage.observeContent(callback)
-
-    fun observeForecast(callback: Observer<ResourceAmount<ItemVariant>>): AutoCloseable {
-        markForeCastDirty()
-        return forecastHolder.observeValue(callback)
-    }
-
-    fun onNeighborUpdate() {
-        logger.info("neighbor updated")
-        markForeCastDirty()
-    }
-
-    fun tick(world: World) {
-        config.cleanRecipe(world)
-        updateForecast()
     }
 
     fun dropContent() {
-        pos.up().let { dropPos ->
-            ItemScatterer.spawn(
-                world,
-                dropPos.x.toDouble(),
-                dropPos.y.toDouble(),
-                dropPos.z.toDouble(),
-                craftingStorage.dropItems()
-            )
+        if (content.isEmpty) return
+        world?.let { world ->
+            pos.up().let { dropPos ->
+                ItemScatterer.spawn(
+                    world,
+                    dropPos.x.toDouble(),
+                    dropPos.y.toDouble(),
+                    dropPos.z.toDouble(),
+                    content
+                )
+            }
+            content.count = 0
         }
     }
 
-    private fun updateForecast() {
-        if (--updateDelay > 0) return
-        updateDelay = 60
+    private fun notifyScreenHandlers() {
+        openScreenHandlers.forEach { it.sendContentUpdates() }
+    }
 
-        if (recipe.isEmpty) {
-            forecastHolder.set(EMPTY_ITEM_AMOUNT)
-            return
+    private fun updateRecipe(): Boolean {
+        if (!dirtyRecipe) return false
+        (world as? ServerWorld)?.let { world ->
+            dirtyRecipe = false
+            val newRecipe = RecipeResolver.of(world).resolve(grid, fuzzyFlag)
+            logger.debug("recipe resolved to: {}", newRecipe)
+            if (newRecipe != recipe) {
+                recipe = newRecipe
+                if (!content.isOf(recipe.output.item)) {
+                    dropContent()
+                }
+                dirtyForecast = true
+                return true
+            }
         }
+        return false
+    }
+
+    private fun updateForecast(): Boolean {
+        if (!dirtyForecast) return false
+        dirtyForecast = false
+
+        val newForecast = computeForecast()
+        if (ItemStack.areEqual(forecast, newForecast)) return false
+
+        forecast = newForecast
+        return true
+    }
+
+    private fun computeForecast(): ItemStack =
         withOuterTransaction { tx ->
-            val res = craftingStorage.resource
-            val amount = craftingStorage.extract(recipe.output.resource, recipe.output.amount, tx)
-            tx.abort()
-            forecastHolder.set(res.toAmount(amount))
+            with(recipe.output) {
+                val crafted = copy()
+                crafted.count = storage.extract(ItemVariant.of(this), count.toLong(), tx).toInt()
+                crafted
+            }
         }
-    }
 
     private val apiCaches: Map<Direction, BlockApiCache<Storage<ItemVariant>, Direction>> by lazy {
         (world as? ServerWorld)?.let { world ->
@@ -142,25 +185,117 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         } ?: mapOf()
     }
 
-    private fun findStorages(): List<Storage<ItemVariant>> =
-        apiCaches.entries.mapNotNull { (direction, cache) -> cache.find(direction) }
+    private fun findStorage(): Storage<ItemVariant> =
+        CombinedStorage(
+            apiCaches.entries.mapNotNull { (direction, cache) -> cache.find(direction) }
+        )
 
-    override fun getDisplayName(): Text = TranslatableText("block.adicrafter.crafter")
+    inner class StorageAdapter : SingleSlotStorage<ItemVariant>, SnapshotParticipant<ItemStack>() {
 
-    override fun createMenu(syncId: Int, playerInventory: PlayerInventory, player: PlayerEntity) =
-        CrafterScreenHandler(syncId, playerInventory, this)
+        override fun isResourceBlank() = recipe.isEmpty
+        override fun getCapacity() = resource.item.maxCount.toLong()
+        override fun getResource() = recipe.output.toVariant()
+        override fun getAmount() = content.count.toLong()
+        override fun supportsInsertion() = false
+        override fun insert(resource: ItemVariant, maxAmount: Long, tx: TransactionContext) = 0L
+        override fun exactView(transaction: TransactionContext, resource: ItemVariant): StorageView<ItemVariant> = this
 
-    override fun readNbt(nbt: NbtCompound) {
-        super.readNbt(nbt)
+        override fun extract(resource: ItemVariant, maxAmount: Long, tx: TransactionContext): Long {
+            if (maxAmount < 1 || recipe.isEmpty || !resource.matches(recipe.output)) return 0L
+            updateSnapshots(tx)
+            val maxAmountInt = maxAmount.toInt()
+            val current = content.count
+            if (maxAmountInt > current) {
+                val crafted = craft(maxAmountInt - current, tx)
+                content = recipe.output.copy().apply {
+                    count = current + crafted
+                }
+            }
+            val extracted = content.split(maxAmountInt)
+            return extracted.count.toLong()
+        }
 
-        config.readFromNbt(nbt.getList(CONFIG_NBT_KEY, NbtType.COMPOUND))
-        craftingStorage.readFromNbt(nbt.getCompound(CONTENT_NBT_KEY))
+        private fun craft(amount: Int, tx: TransactionContext) =
+            RecipeCrafter(recipe, findStorage())
+                .extract(recipe.output.toVariant(), amount.toLong(), tx).toInt()
+
+        override fun createSnapshot(): ItemStack = content.copy()
+        override fun readSnapshot(snapshot: ItemStack) {
+            content = snapshot
+        }
+
+        override fun onFinalCommit() {
+            dirtyForecast = true
+            markDirty()
+        }
     }
 
-    override fun writeNbt(nbt: NbtCompound) {
-        super.writeNbt(nbt)
+    inner class InventoryAdapter : SidedInventory {
 
-        nbt.put(CONFIG_NBT_KEY, config.toNbt())
-        nbt.put(CONTENT_NBT_KEY, craftingStorage.toNbt())
+        override fun size() = INVENTORY_SIZE
+        override fun isEmpty() = false
+        override fun markDirty() {}
+        override fun getMaxCountPerStack() = 1
+        override fun canPlayerUse(player: PlayerEntity?) = true
+        override fun getAvailableSlots(side: Direction?) = intArrayOf(OUTPUT_SLOT)
+
+        override fun onOpen(player: PlayerEntity?) {
+            super.onOpen(player)
+            dirtyForecast = true
+        }
+
+        override fun isValid(slot: Int, stack: ItemStack) =
+            slot < grid.size
+
+        override fun clear() {
+            for (i in 0 until grid.size) {
+                grid[i] = ItemStack.EMPTY
+            }
+            dirtyRecipe = true
+            this@CrafterBlockEntity.markDirty()
+        }
+
+        override fun getStack(slot: Int): ItemStack =
+            when (slot) {
+                in 0 until GRID_SIZE -> grid[slot]
+                OUTPUT_SLOT          -> forecast
+                RESULT_SLOT          -> recipe.output
+                CONTENT_SLOT         -> content
+                else                 -> ItemStack.EMPTY
+            }.copy()
+
+        override fun removeStack(slot: Int, amount: Int): ItemStack =
+            when (slot) {
+                in 0 until GRID_SIZE -> {
+                    grid[slot] = ItemStack.EMPTY
+                    dirtyRecipe = true
+                    this@CrafterBlockEntity.markDirty()
+                    ItemStack.EMPTY
+                }
+                OUTPUT_SLOT          -> {
+                    withOuterTransaction { tx ->
+                        val extracted = storage.extract(recipe.output.toVariant(), amount.toLong(), tx)
+                        recipe.output.copy().apply { count = extracted.toInt() }
+                    }
+                }
+                else                 -> ItemStack.EMPTY
+            }
+
+        override fun removeStack(slot: Int): ItemStack =
+            removeStack(slot, getStack(slot).count)
+
+        override fun setStack(slot: Int, stack: ItemStack) {
+            if (slot in 0 until GRID_SIZE) {
+                grid[slot] = stack.copy().apply { count = 1 }
+                dirtyRecipe = true
+                this@CrafterBlockEntity.markDirty()
+            }
+        }
+
+        override fun canInsert(slot: Int, stack: ItemStack, dir: Direction?) =
+            slot < GRID_SIZE
+
+        override fun canExtract(slot: Int, stack: ItemStack, dir: Direction?) =
+            slot == OUTPUT_SLOT && stack.isOf(recipe.output.item)
     }
 }

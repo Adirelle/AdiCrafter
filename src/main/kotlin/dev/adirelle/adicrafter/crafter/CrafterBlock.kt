@@ -1,7 +1,10 @@
 package dev.adirelle.adicrafter.crafter
 
 import net.fabricmc.fabric.api.`object`.builder.v1.block.FabricBlockSettings
-import net.minecraft.block.*
+import net.minecraft.block.BlockRenderType
+import net.minecraft.block.BlockState
+import net.minecraft.block.BlockWithEntity
+import net.minecraft.block.Material
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.block.entity.BlockEntityTicker
 import net.minecraft.block.entity.BlockEntityType
@@ -28,25 +31,14 @@ class CrafterBlock : BlockWithEntity(
         type: BlockEntityType<T>
     ): BlockEntityTicker<T>? {
         return (world as? ServerWorld)?.let {
-            checkType(type, Crafter.BLOCK_ENTITY_TYPE) { world, _, _, blockEntity ->
-                blockEntity.tick(world)
+            checkType(type, CrafterFeature.BLOCK_ENTITY_TYPE) { _, _, _, blockEntity ->
+                blockEntity.tick()
             }
         }
     }
 
     private fun getBlockEntity(world: World, pos: BlockPos): CrafterBlockEntity? =
         (world as? ServerWorld)?.let { (world.getBlockEntity(pos) as? CrafterBlockEntity) }
-
-    override fun neighborUpdate(
-        state: BlockState,
-        world: World,
-        pos: BlockPos,
-        block: Block,
-        fromPos: BlockPos,
-        notify: Boolean
-    ) {
-        getBlockEntity(world, pos)?.onNeighborUpdate()
-    }
 
     override fun onStateReplaced(
         state: BlockState,
@@ -56,7 +48,7 @@ class CrafterBlock : BlockWithEntity(
         moved: Boolean
     ) {
         if (!state.isOf(newState.block)) {
-            getBlockEntity(world, pos)?.dropContent()
+            //getBlockEntity(world, pos)?.dropContent()
             super.onStateReplaced(state, world, pos, newState, moved)
         }
     }

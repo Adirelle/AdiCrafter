@@ -1,20 +1,19 @@
 @file:Suppress("UnstableApiUsage")
 
-package dev.adirelle.adicrafter.crafter.internal
+package dev.adirelle.adicrafter.crafter.recipe
 
 import dev.adirelle.adicrafter.utils.areEqual
-import dev.adirelle.adicrafter.utils.extensions.EMPTY_ITEM_AMOUNT
-import dev.adirelle.adicrafter.utils.extensions.resourceAmountFromNbt
-import dev.adirelle.adicrafter.utils.extensions.toAmount
 import dev.adirelle.adicrafter.utils.extensions.toNbt
-import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
-import net.fabricmc.fabric.api.transfer.v1.storage.base.ResourceAmount
 import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NbtList
 
 class Grid private constructor(
-    val slots: List<ResourceAmount<ItemVariant>>
-) : NbtPersistable<NbtList>, List<ResourceAmount<ItemVariant>> by slots {
+    input: List<ItemStack>
+) : Iterable<ItemStack> {
+
+    private val slots = MutableList(input.size) { input[it] }
+
+    val size by slots::size
 
     companion object {
 
@@ -22,23 +21,24 @@ class Grid private constructor(
         const val HEIGHT = 3
         const val SIZE = WIDTH * HEIGHT
 
-        val EMPTY = Grid(List(SIZE) { EMPTY_ITEM_AMOUNT })
+        fun empty() =
+            Grid(List(SIZE) { ItemStack.EMPTY })
 
         fun fromNbt(nbt: NbtList): Grid =
             if (nbt.size == SIZE)
-                Grid(List(SIZE) { resourceAmountFromNbt(nbt.getCompound(it)) })
+                Grid(List(SIZE) { ItemStack.fromNbt(nbt.getCompound(it)) })
             else
-                EMPTY
+                empty()
 
         fun copyOf(other: List<ItemStack>): Grid {
             if (other.size != SIZE) {
                 throw IndexOutOfBoundsException("expected a list of $SIZE elements")
             }
-            return Grid(List(SIZE, { other[it].toAmount() }))
+            return Grid(List(SIZE) { other[it].copy().apply { count = 1 } })
         }
     }
 
-    override fun toNbt() =
+    fun toNbt() =
         NbtList().apply {
             slots.forEach { slot -> add(slot.toNbt()) }
         }
@@ -53,4 +53,16 @@ class Grid private constructor(
     }
 
     override fun hashCode() = slots.hashCode()
+
+    operator fun set(index: Int, stack: ItemStack) {
+        slots[index] = stack.copy().apply { count = 1 }
+    }
+
+    operator fun get(index: Int) =
+        slots[index]
+
+    override fun iterator() =
+        slots.iterator()
+
+    fun asList(): List<ItemStack> = slots
 }

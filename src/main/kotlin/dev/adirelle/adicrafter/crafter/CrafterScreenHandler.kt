@@ -2,10 +2,14 @@
 
 package dev.adirelle.adicrafter.crafter
 
-import dev.adirelle.adicrafter.crafter.internal.Grid
-import dev.adirelle.adicrafter.crafter.networking.ScreenUpdateS2CPacket
-import dev.adirelle.adicrafter.utils.expectExactSize
-import dev.adirelle.adicrafter.utils.extensions.*
+import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.CONTENT_SLOT
+import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.GRID_HEIGHT
+import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.GRID_SIZE
+import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.GRID_WIDTH
+import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.INVENTORY_SIZE
+import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.OUTPUT_SLOT
+import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.RESULT_SLOT
+import dev.adirelle.adicrafter.utils.lazyLogger
 import dev.adirelle.adicrafter.utils.withOuterTransaction
 import io.github.cottonmc.cotton.gui.SyncedGuiDescription
 import io.github.cottonmc.cotton.gui.widget.WGridPanel
@@ -14,179 +18,117 @@ import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.item.PlayerInventoryStorage
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage
 import net.fabricmc.fabric.api.transfer.v1.storage.StorageUtil
-import net.fabricmc.fabric.api.transfer.v1.storage.base.ResourceAmount
+import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.entity.player.PlayerInventory
 import net.minecraft.inventory.Inventory
 import net.minecraft.inventory.SimpleInventory
 import net.minecraft.item.ItemStack
+import net.minecraft.screen.ScreenHandler
+import net.minecraft.screen.ScreenHandlerListener
 import net.minecraft.screen.slot.Slot
 import net.minecraft.screen.slot.SlotActionType
 import net.minecraft.screen.slot.SlotActionType.*
-import kotlin.math.min
 
 class CrafterScreenHandler(
-    syncId: Int, playerInventory: PlayerInventory,
-    blockEntity: CrafterBlockEntity? = null
-) : SyncedGuiDescription(Crafter.SCREEN_HANDLER_TYPE, syncId, playerInventory) {
+    syncId: Int,
+    playerInventory: PlayerInventory,
+    blockInventory: Inventory = SimpleInventory(INVENTORY_SIZE),
+    private val blockEntity: CrafterBlockEntity? = null
+) : SyncedGuiDescription(CrafterFeature.SCREEN_HANDLER_TYPE, syncId, playerInventory, blockInventory, null),
+    ScreenHandlerListener {
 
-    private val grid = SimpleInventory(CrafterBlockEntity.GRID_SIZE)
-    private val result = SimpleInventory(1)
-    private val buffer = SimpleInventory(1)
-    private val forecast = SimpleInventory(1)
-
-    private val crafter: Storage<ItemVariant>? = blockEntity?.storage
+    private val logger by lazyLogger
 
     init {
         with(rootPanel as WGridPanel) {
-            val gridSlot = WItemSlot.of(grid, 0, CrafterBlockEntity.GRID_WIDTH, CrafterBlockEntity.GRID_HEIGHT)
-                .apply { isModifiable = false }
+            val gridSlot =
+                WItemSlot.of(blockInventory, 0, GRID_WIDTH, GRID_HEIGHT)
             add(gridSlot, 0, 1)
 
-            val resultSlot = WItemSlot.of(result, 0).apply { isModifiable = false }
+            val resultSlot = WItemSlot.of(blockInventory, RESULT_SLOT)
+            resultSlot.isModifiable = false
             add(resultSlot, 4, 2)
 
-            val bufferSlot = WItemSlot.of(buffer, 0).apply { isModifiable = false }
+            val bufferSlot = WItemSlot.of(blockInventory, CONTENT_SLOT)
+            bufferSlot.isModifiable = false
             add(bufferSlot, 8, 0)
 
-            val outputSlot = WItemSlot.outputOf(forecast, 0).apply { isModifiable = false }
+            val outputSlot = WItemSlot.outputOf(blockInventory, OUTPUT_SLOT)
+            outputSlot.isInsertingAllowed = false
             add(outputSlot, 6, 2)
 
             add(createPlayerInventoryPanel(true), 0, 4)
         }
         rootPanel.validate(this)
+
+        addListener(this)
     }
-
-    private val subscriptions = blockEntity?.let { onServer(it) } ?: listOf()
-
-    private fun onServer(blockEntity: CrafterBlockEntity): List<AutoCloseable> =
-        listOf(
-            blockEntity.observeGrid(this::onGridChanged),
-            blockEntity.observeRecipe(this::onRecipeChanged),
-            blockEntity.observeContent(this::onContentChanged),
-            blockEntity.observeForecast(this::onForecastChanged)
-        ).also {
-            onGridChanged(blockEntity.grid)
-            onRecipeChanged(blockEntity.recipe)
-            onContentChanged(blockEntity.content)
-            onForecastChanged(blockEntity.forecast)
-            grid.addListener { onGridEditedLocally(blockEntity) }
-        }
 
     override fun close(player: PlayerEntity) {
         super.close(player)
-        subscriptions.close()
+        blockEntity?.onScreenHandlerClosed(this)
     }
 
-    private var updatingGrid = false
-
-    private fun onGridEditedLocally(blockEntity: CrafterBlockEntity) {
-        if (updatingGrid) return
-        blockEntity.grid = Grid.copyOf(grid.asList())
-    }
-
-    private fun onGridChanged(newGrid: Grid) {
-        try {
-            updatingGrid = true
-            expectExactSize(newGrid, grid.size()).forEachIndexed { index, amount ->
-                setStack(grid, index, amount)
+    private inline fun ifBlockInventory(slotId: Int, block: (Slot) -> Unit) {
+        slots.getOrNull(slotId)?.let { slot ->
+            if (slot.inventory === blockInventory) {
+                block(slot)
             }
-        } finally {
-            updatingGrid = false
         }
     }
 
-    private fun setStack(inventory: Inventory, invSlot: Int, items: ResourceAmount<ItemVariant>) {
-        getSlotIndex(inventory, invSlot).ifPresent { slotIndex ->
-            slots[slotIndex].stack = items.toStack()
-        }
-    }
+    override fun onSlotUpdate(handler: ScreenHandler, slotId: Int, stack: ItemStack) {}
 
-    private fun onRecipeChanged(recipe: Recipe) {
-        setStack(result, 0, recipe.output)
-    }
-
-    private fun onContentChanged(content: ResourceAmount<ItemVariant>) {
-        setStack(buffer, 0, content)
-    }
-
-    private fun onForecastChanged(newForecast: ResourceAmount<ItemVariant>) {
-        setStack(forecast, 0, newForecast)
+    override fun onPropertyUpdate(handler: ScreenHandler, property: Int, value: Int) {
+        if (handler != this) return
+        logger.debug("onPropertyUpdate: {} -> {}", property, value)
     }
 
     override fun onSlotClick(slotIndex: Int, button: Int, actionType: SlotActionType, player: PlayerEntity) {
         if (world.isClient) return
-        slots.getOrNull(slotIndex)?.let { slot ->
-            return when (slot.inventory) {
-                grid     -> onGridClick(slot, actionType)
-                forecast -> crafter?.let { onOutputClick(it, actionType) } ?: Unit
-                else     -> super.onSlotClick(slotIndex, button, actionType, player)
+        ifBlockInventory(slotIndex) { slot ->
+            when {
+                slot.index < GRID_SIZE    -> onGridClick(slot, actionType)
+                slot.index == OUTPUT_SLOT -> onOutputClick(slot, actionType)
+                else                      -> logger.debug("ignored slot action: {}", slot.index, actionType)
             }
+            return
         }
         super.onSlotClick(slotIndex, button, actionType, player)
     }
 
     private fun onGridClick(slot: Slot, actionType: SlotActionType) {
-        if (actionType == PICKUP) {
-            if (!cursorStack.isEmpty && (slot.stack.isEmpty || !ItemStack.canCombine(cursorStack, slot.stack))) {
-                slot.stack = cursorStack.copy().apply { count = 1 }
-            } else {
-                slot.stack = ItemStack.EMPTY
-            }
-            return
-        }
-
-        if (actionType == QUICK_CRAFT) {
-            slot.stack = cursorStack.copy().apply { count = 1 }
-            return
-        }
-
-        if (actionType == QUICK_MOVE) {
-            slot.stack = ItemStack.EMPTY
-            return
+        when {
+            actionType == PICKUP_ALL           -> blockInventory.clear()
+            !slot.stack.isOf(cursorStack.item) -> slot.stack = cursorStack
+            else                               -> slot.stack = ItemStack.EMPTY
         }
     }
 
-    private fun onOutputClick(crafter: Storage<ItemVariant>, actionType: SlotActionType) =
-        when (actionType) {
-            PICKUP     ->
-                withOuterTransaction { tx ->
-                    val cursor = PlayerInventoryStorage.getCursorStorage(this)
-                    StorageUtil.move(
-                        crafter,
-                        cursor,
-                        { canExtract(cursor.resource, it) },
-                        min(cursor.capacity - cursor.amount, forecast[0].count.toLong()),
-                        tx
-
-                    )
-                    tx.commit()
+    private fun onOutputClick(slot: Slot, actionType: SlotActionType) {
+        blockEntity?.storage?.let { storage ->
+            withOuterTransaction { tx ->
+                val moved = when (actionType) {
+                    PICKUP     -> pickupOutput(storage, slot.stack.count.toLong(), tx)
+                    PICKUP_ALL -> pickupOutput(storage, slot.stack.maxCount.toLong(), tx)
+                    QUICK_MOVE -> quickMoveOutput(storage, slot.stack.maxCount.toLong(), tx)
+                    else       -> {
+                        logger.debug("ignored output action: {}", actionType)
+                        0
+                    }
                 }
-            PICKUP_ALL ->
-                withOuterTransaction { tx ->
-                    val cursor = PlayerInventoryStorage.getCursorStorage(this)
-                    StorageUtil.move(
-                        crafter,
-                        cursor,
-                        { canExtract(cursor.resource, it) },
-                        cursor.capacity - cursor.amount,
-                        tx
-                    )
-                    tx.commit()
-                }
-            QUICK_MOVE ->
-                withOuterTransaction { tx ->
-                    StorageUtil.move(
-                        crafter,
-                        PlayerInventoryStorage.of(playerInventory),
-                        { true },
-                        Long.MAX_VALUE,
-                        tx
-                    )
-                    tx.commit()
-                }
-            else       ->
-                Unit
+                if (moved > 0) tx.commit()
+            }
         }
+    }
+
+    private fun pickupOutput(storage: Storage<ItemVariant>, maxAmount: Long, tx: Transaction) =
+        StorageUtil.move(storage, PlayerInventoryStorage.getCursorStorage(this), { true }, maxAmount, tx)
+
+    private fun quickMoveOutput(storage: Storage<ItemVariant>, maxAmount: Long, tx: Transaction) =
+        playerInventory?.let { inv ->
+            StorageUtil.move(storage, PlayerInventoryStorage.of(inv), { true }, maxAmount, tx)
+        } ?: 0L
 
 }
