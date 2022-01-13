@@ -3,6 +3,7 @@
 package dev.adirelle.adicrafter.crafter
 
 import dev.adirelle.adicrafter.AdiCrafter
+import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.FLUID_PROP_IDX
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.FUZZY_PROP_IDX
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.GRID_FIRST_SLOT
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.GRID_HEIGHT
@@ -12,7 +13,6 @@ import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.INVENTORY_SI
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.OUTPUT_SLOT
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.PROP_COUNT
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.RESULT_SLOT
-import dev.adirelle.adicrafter.utils.extensions.toBoolean
 import dev.adirelle.adicrafter.utils.extensions.toInt
 import dev.adirelle.adicrafter.utils.lazyLogger
 import dev.adirelle.adicrafter.utils.withOuterTransaction
@@ -23,6 +23,8 @@ import io.github.cottonmc.cotton.gui.networking.ScreenNetworking
 import io.github.cottonmc.cotton.gui.widget.WGridPanel
 import io.github.cottonmc.cotton.gui.widget.WItemSlot
 import io.github.cottonmc.cotton.gui.widget.WToggleButton
+import net.fabricmc.api.EnvType
+import net.fabricmc.api.Environment
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.item.PlayerInventoryStorage
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage
@@ -31,12 +33,12 @@ import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.entity.player.PlayerInventory
 import net.minecraft.item.ItemStack
-import net.minecraft.screen.ScreenHandler
+import net.minecraft.network.PacketByteBuf
 import net.minecraft.screen.ScreenHandlerContext
-import net.minecraft.screen.ScreenHandlerListener
 import net.minecraft.screen.slot.Slot
 import net.minecraft.screen.slot.SlotActionType
 import net.minecraft.screen.slot.SlotActionType.*
+import net.minecraft.text.LiteralText
 import net.minecraft.util.Identifier
 import java.util.function.Consumer
 
@@ -51,8 +53,7 @@ class CrafterScreenHandler(
         playerInventory,
         getBlockInventory(context, INVENTORY_SIZE),
         getBlockPropertyDelegate(context, PROP_COUNT)
-    ),
-    ScreenHandlerListener {
+    ) {
 
     private val logger by lazyLogger
 
@@ -61,12 +62,20 @@ class CrafterScreenHandler(
         private val FUZZY_MSG_ID = Identifier(AdiCrafter.MOD_ID, "screen-set-fuzzy")
     }
 
-    private val clientNetworking = ScreenNetworking.of(this, CLIENT)
-    private val serverNetworking = ScreenNetworking.of(this, SERVER)
+    private val fuzzyToggle = WToggleButton(LiteralText("Fuzzy"))
 
-    private val fuzzyButton = WToggleButton().apply {
-        onToggle = Consumer { enabled ->
-            clientNetworking.send(FUZZY_MSG_ID) { it.writeBoolean(enabled) }
+    // Client-side constructor
+    @Environment(EnvType.CLIENT)
+    constructor(syncId: Int, playerInventory: PlayerInventory, initialState: PacketByteBuf)
+        : this(syncId, playerInventory, ScreenHandlerContext.EMPTY) {
+
+        val networking = ScreenNetworking.of(this, CLIENT)
+
+        with(fuzzyToggle) {
+            onToggle = Consumer { enabled ->
+                networking.send(FUZZY_MSG_ID) { it.writeBoolean(enabled) }
+            }
+            toggle = initialState.readBoolean()
         }
     }
 
@@ -84,19 +93,20 @@ class CrafterScreenHandler(
         outputSlot.isInsertingAllowed = false
         root.add(outputSlot, 6, 2)
 
-        root.add(fuzzyButton, 8, 0)
-        fuzzyButton.toggle = propertyDelegate.get(FUZZY_PROP_IDX).toBoolean()
+        root.add(fuzzyToggle, 6, 0)
 
         root.add(createPlayerInventoryPanel(true), 0, 4)
 
         root.validate(this)
 
-        serverNetworking.receive(FUZZY_MSG_ID) { buf ->
-            setProperty(FUZZY_PROP_IDX, buf.readBoolean().toInt())
-            sendContentUpdates()
+        // Server-side init
+        context.run { _, _ ->
+            with(ScreenNetworking.of(this, SERVER)) {
+                receive(FUZZY_MSG_ID) { buf ->
+                    setProperty(FUZZY_PROP_IDX, buf.readBoolean().toInt())
+                }
+            }
         }
-
-        addListener(this)
     }
 
     private inline fun withBlockEntity(crossinline block: (CrafterBlockEntity) -> Unit) {
@@ -119,19 +129,6 @@ class CrafterScreenHandler(
             if (slot.inventory === blockInventory) {
                 block(slot)
             }
-        }
-    }
-
-    override fun onSlotUpdate(handler: ScreenHandler, slotId: Int, stack: ItemStack) {}
-
-    override fun onPropertyUpdate(handler: ScreenHandler, property: Int, value: Int) {
-        when (property) {
-            FUZZY_PROP_IDX -> {
-                logger.debug("fuzzy property updated to {}", value.toBoolean())
-                fuzzyButton.toggle = value.toBoolean()
-            }
-            else           ->
-                logger.debug("ignored property update: {} -> {}", property, value)
         }
     }
 

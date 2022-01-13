@@ -12,6 +12,7 @@ import dev.adirelle.adicrafter.utils.lazyLogger
 import dev.adirelle.adicrafter.utils.withOuterTransaction
 import io.github.cottonmc.cotton.gui.PropertyDelegateHolder
 import net.fabricmc.fabric.api.lookup.v1.block.BlockApiCache
+import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory
 import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage
@@ -29,10 +30,11 @@ import net.minecraft.entity.player.PlayerInventory
 import net.minecraft.inventory.SidedInventory
 import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NbtCompound
-import net.minecraft.screen.NamedScreenHandlerFactory
+import net.minecraft.network.PacketByteBuf
 import net.minecraft.screen.PropertyDelegate
 import net.minecraft.screen.ScreenHandler
 import net.minecraft.screen.ScreenHandlerContext
+import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.text.Text
 import net.minecraft.text.TranslatableText
@@ -45,7 +47,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
     BlockEntity(CrafterFeature.BLOCK_ENTITY_TYPE, pos, state),
     InventoryProvider,
     PropertyDelegateHolder,
-    NamedScreenHandlerFactory {
+    ExtendedScreenHandlerFactory {
 
     companion object {
 
@@ -75,7 +77,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
     val storage: Storage<ItemVariant> = StorageAdapter()
 
     private var grid = Grid.empty()
-    private var fuzzyFlag: Boolean = false
+    private var useFuzzyRecipe: Boolean = false
 
     private var recipe: Recipe = Recipe.EMPTY
     private var dirtyRecipe = false
@@ -104,6 +106,10 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         return handler
     }
 
+    override fun writeScreenOpeningData(player: ServerPlayerEntity, buf: PacketByteBuf) {
+        buf.writeBoolean(useFuzzyRecipe)
+    }
+
     fun onScreenHandlerClosed(handler: ScreenHandler) {
         openScreenHandlers.remove(handler)
     }
@@ -113,7 +119,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
         grid = Grid.fromNbt(nbt.getList(GRID_NBT_KEY, NbtType.COMPOUND))
         content = ItemStack.fromNbt(nbt.getCompound(CONTENT_NBT_KEY))
-        fuzzyFlag = nbt.getBoolean(FUZZY_NBT_KEY)
+        useFuzzyRecipe = nbt.getBoolean(FUZZY_NBT_KEY)
 
         dirtyRecipe = true
         dirtyForecast = true
@@ -124,7 +130,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
         nbt.put(GRID_NBT_KEY, grid.toNbt())
         nbt.put(CONTENT_NBT_KEY, content.toNbt())
-        nbt.putBoolean(FUZZY_NBT_KEY, fuzzyFlag)
+        nbt.putBoolean(FUZZY_NBT_KEY, useFuzzyRecipe)
     }
 
     fun tick() {
@@ -159,7 +165,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         if (!dirtyRecipe) return false
         (world as? ServerWorld)?.let { world ->
             dirtyRecipe = false
-            val newRecipe = RecipeResolver.of(world).resolve(grid, fuzzyFlag)
+            val newRecipe = RecipeResolver.of(world).resolve(grid, useFuzzyRecipe)
             logger.debug("recipe resolved to: {}", newRecipe)
             if (newRecipe != recipe) {
                 recipe = newRecipe
@@ -324,16 +330,20 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
         override fun get(index: Int) =
             when (index) {
-                FUZZY_PROP_IDX -> fuzzyFlag.toInt()
+                FUZZY_PROP_IDX -> useFuzzyRecipe.toInt()
                 else           -> throw IndexOutOfBoundsException()
             }
 
         override fun set(index: Int, value: Int) {
             when (index) {
                 FUZZY_PROP_IDX -> {
-                    if (value.toBoolean() != fuzzyFlag) {
+                    if (value.toBoolean() != useFuzzyRecipe) {
                         logger.debug("updating fuzzy flag through property: {}", value.toBoolean())
-                        fuzzyFlag = value.toBoolean()
+                        useFuzzyRecipe = value.toBoolean()
+                        dirtyRecipe = true
+                        markDirty()
+                    }
+                }
                         dirtyRecipe = true
                         markDirty()
                     }
