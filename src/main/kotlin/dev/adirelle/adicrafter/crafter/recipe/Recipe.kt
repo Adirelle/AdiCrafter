@@ -4,16 +4,15 @@ package dev.adirelle.adicrafter.crafter
 
 import dev.adirelle.adicrafter.AdiCrafter
 import dev.adirelle.adicrafter.crafter.recipe.ingredient.Ingredient
+import dev.adirelle.adicrafter.utils.areEqual
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.minecraft.item.ItemStack
-import net.minecraft.item.ItemStack.areEqual
-import net.minecraft.recipe.CraftingRecipe
 import net.minecraft.util.Identifier
 
-open class Recipe protected constructor(
+open class Recipe(
     val id: Identifier,
     val output: ItemStack,
-    val ingredients: List<Ingredient<ItemVariant>>,
+    val ingredients: Collection<Ingredient<ItemVariant>>,
 ) {
 
     open val isEmpty: Boolean = false
@@ -27,8 +26,7 @@ open class Recipe protected constructor(
 
         return id == other.id &&
             areEqual(output, other.output) &&
-            ingredients.size == other.ingredients.size &&
-            ingredients.withIndex().all { (idx, ingredient) -> ingredient == other.ingredients[idx] }
+            areEqual(ingredients, other.ingredients)
     }
 
     override fun hashCode() =
@@ -46,33 +44,6 @@ open class Recipe protected constructor(
             override fun equals(other: Any?) = (other as? Recipe)?.isEmpty ?: false
             override fun hashCode() = toString().hashCode()
         }
-
-        fun of(recipe: CraftingRecipe, grid: List<ItemStack>, fuzzy: Boolean) =
-            when {
-                recipe.isEmpty -> EMPTY
-                fuzzy          -> ofFuzzily(recipe)
-                else           -> ofExactly(recipe, grid)
-            }
-
-        fun ofExactly(recipe: CraftingRecipe, grid: List<ItemStack>) =
-            Recipe(
-                recipe.id,
-                recipe.output,
-                grid
-                    .filter { !it.isEmpty }
-                    .groupBy { it.item }
-                    .map { (item, stacks) -> Ingredient.exactly(item, stacks.size) }
-            )
-
-        fun ofFuzzily(recipe: CraftingRecipe) =
-            Recipe(
-                recipe.id,
-                recipe.output,
-                recipe.ingredients
-                    .filter { !it.isEmpty }
-                    .groupBy { it.matchingStacks }
-                    .map { (stacks, list) -> Ingredient.anyOf(stacks, list.size) }
-            )
     }
 }
 

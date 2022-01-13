@@ -6,15 +6,12 @@ import dev.adirelle.adicrafter.utils.withNestedTransaction
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
-import net.minecraft.item.Item
 
 class IngredientWithRemainder(
-    item: Item,
-    remainderItem: Item,
+    item: ItemVariant,
+    val remainder: ItemVariant,
     amount: Long
-) : ExactItemIngredient(item, amount) {
-
-    val remainder: ItemVariant = ItemVariant.of(remainderItem)
+) : ExactIngredient<ItemVariant>(item, amount) {
 
     override fun extractFrom(storage: Storage<ItemVariant>, maxAmount: Long, tx: TransactionContext): Long {
         val fixedAmount = withNestedTransaction(tx) { nested ->

@@ -2,16 +2,16 @@
 
 package dev.adirelle.adicrafter.crafter
 
+import dev.adirelle.adicrafter.crafter.recipe.ingredient.StorageProvider
 import dev.adirelle.adicrafter.utils.withNestedTransaction
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
-import net.fabricmc.fabric.api.transfer.v1.storage.Storage
 import net.fabricmc.fabric.api.transfer.v1.storage.StorageView
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 import kotlin.math.min
 
 class RecipeCrafter(
     private val recipe: Recipe,
-    private val inputs: Storage<ItemVariant>,
+    private val storageProvider: StorageProvider,
 ) : StorageView<ItemVariant> {
 
     private val outputResource: ItemVariant = ItemVariant.of(recipe.output)
@@ -45,9 +45,18 @@ class RecipeCrafter(
         val maxBatchs = (maxAmount + outputAmount - 1) / outputAmount
         var craftedBatchs = maxBatchs
         for (ingredient in recipe.ingredients) {
-            val extracted = ingredient.extractFrom(inputs, ingredient.amount * maxBatchs, tx)
+            val extracted = ingredient.extractFrom(storageProvider, ingredient.amount * maxBatchs, tx)
             craftedBatchs = min(craftedBatchs, extracted / ingredient.amount)
         }
         return outputAmount * craftedBatchs
+    }
+
+    companion object EMPTY : StorageView<ItemVariant> {
+
+        override fun extract(resource: ItemVariant, maxAmount: Long, transaction: TransactionContext) = 0L
+        override fun isResourceBlank() = true
+        override fun getResource() = ItemVariant.blank()
+        override fun getAmount() = 0L
+        override fun getCapacity() = 0L
     }
 }
