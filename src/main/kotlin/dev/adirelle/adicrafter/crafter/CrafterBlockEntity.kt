@@ -4,10 +4,7 @@ package dev.adirelle.adicrafter.crafter
 
 import dev.adirelle.adicrafter.crafter.recipe.Grid
 import dev.adirelle.adicrafter.crafter.recipe.RecipeResolver
-import dev.adirelle.adicrafter.crafter.recipe.ingredient.ExactIngredient
-import dev.adirelle.adicrafter.crafter.recipe.ingredient.FuzzyIngredient
-import dev.adirelle.adicrafter.crafter.recipe.ingredient.ResourceType
-import dev.adirelle.adicrafter.crafter.recipe.ingredient.StorageProvider
+import dev.adirelle.adicrafter.crafter.recipe.ingredient.*
 import dev.adirelle.adicrafter.utils.extensions.toBoolean
 import dev.adirelle.adicrafter.utils.extensions.toInt
 import dev.adirelle.adicrafter.utils.extensions.toNbt
@@ -17,6 +14,9 @@ import dev.adirelle.adicrafter.utils.withOuterTransaction
 import io.github.cottonmc.cotton.gui.PropertyDelegateHolder
 import net.fabricmc.fabric.api.lookup.v1.block.BlockApiCache
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory
+import net.fabricmc.fabric.api.transfer.v1.context.ContainerItemContext
+import net.fabricmc.fabric.api.transfer.v1.fluid.FluidStorage
+import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariant
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage
 import net.fabricmc.fabric.api.transfer.v1.storage.StorageView
@@ -32,6 +32,7 @@ import net.minecraft.block.entity.BlockEntity
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.entity.player.PlayerInventory
 import net.minecraft.inventory.SidedInventory
+import net.minecraft.item.Item
 import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NbtCompound
 import net.minecraft.network.PacketByteBuf
@@ -46,6 +47,7 @@ import net.minecraft.util.ItemScatterer
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Direction
 import net.minecraft.world.WorldAccess
+import net.minecraft.recipe.Ingredient as MinecraftIngredient
 
 class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
     BlockEntity(CrafterFeature.BLOCK_ENTITY_TYPE, pos, state),
@@ -87,9 +89,6 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
     private var useFuzzyRecipe: Boolean = false
     private var useFluids: Boolean = false
 
-    private var dirtyIngredientFactory: Boolean = true
-    private var ingredientFactory = RecipeResolver.IngredientFactory { _, _ -> listOf() }
-
     private var recipe: Recipe = Recipe.EMPTY
     private var dirtyRecipe = false
     private var crafter: StorageView<ItemVariant> = RecipeCrafter.EMPTY
@@ -101,6 +100,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
     private val openScreenHandlers = ArrayList<ScreenHandler>(2)
 
+    private val ingredientFactory = IngredientFactory()
     private val inventory = InventoryAdapter()
     private val propertyDelegate = PropertyDelegateAdapter()
 
@@ -142,7 +142,6 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         useFluids = nbt.getBoolean(FLUID_NBT_KEY)
 
         dirtyRecipe = true
-        dirtyIngredientFactory = true
         dirtyForecast = true
     }
 
@@ -185,46 +184,22 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
     private fun updateRecipe(): Boolean {
         if (!dirtyRecipe) return false
-        (world as? ServerWorld)?.let { world ->
-            dirtyRecipe = false
-            val newRecipe = RecipeResolver.of(world).resolve(grid, getIngredientFactory())
-            logger.debug("recipe resolved to: {}", newRecipe)
-            if (newRecipe != recipe) {
-                recipe = newRecipe
-                if (!content.isOf(recipe.output.item)) {
-                    dropContent()
-                }
-                crafter =
-                    if (recipe.isEmpty) RecipeCrafter.EMPTY
-                    else RecipeCrafter(recipe, storageProvider)
-                dirtyForecast = true
-                return true
-            }
-        }
-        return false
-    }
+        val world = world as? ServerWorld ?: return false
+        dirtyRecipe = false
 
-    private fun getIngredientFactory(): RecipeResolver.IngredientFactory {
-        if (!dirtyIngredientFactory) return ingredientFactory
-        dirtyIngredientFactory = false
+        recipe = RecipeResolver.of(world).resolve(grid, ingredientFactory)
+        logger.info("recipe: {}, ingredients: {}", recipe.id, recipe.ingredients.joinToString())
 
-        val exactFactory = ExactIngredient.Factory()
-        val recipeExactFactory = RecipeResolver.IngredientFactory { _, grid ->
-            exactFactory.create(grid.map { ItemVariant.of(it) })
+        if (!content.isOf(recipe.output.item)) {
+            dropContent()
         }
 
-        if (!useFuzzyRecipe) {
-            ingredientFactory = recipeExactFactory
-            return recipeExactFactory
-        }
+        crafter =
+            if (recipe.isEmpty) RecipeCrafter.EMPTY
+            else RecipeCrafter(recipe, storageProvider)
 
-        val fuzzyFactory = FuzzyIngredient.Factory(exactFactory)
-        val recipeFuzzyFactory = RecipeResolver.IngredientFactory { ingredients, _ ->
-            fuzzyFactory.create(ingredients)
-        }
-
-        ingredientFactory = recipeFuzzyFactory
-        return recipeFuzzyFactory
+        dirtyForecast = true
+        return true
     }
 
     private fun updateForecast(): Boolean {
@@ -372,19 +347,15 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
             when (index) {
                 FUZZY_PROP_IDX -> {
                     if (value.toBoolean() != useFuzzyRecipe) {
-                        logger.debug("updating fuzzy flag through property: {}", value.toBoolean())
                         useFuzzyRecipe = value.toBoolean()
                         dirtyRecipe = true
-                        dirtyIngredientFactory = true
                         markDirty()
                     }
                 }
                 FLUID_PROP_IDX -> {
                     if (value.toBoolean() != useFluids) {
-                        logger.debug("updating fluid flag through property: {}", value.toBoolean())
                         useFluids = value.toBoolean()
                         dirtyRecipe = true
-                        dirtyIngredientFactory = true
                         markDirty()
                     }
                 }
@@ -392,7 +363,6 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
                     throw IndexOutOfBoundsException()
             }
         }
-
     }
 
     private class NoStorageProvider : StorageProvider {
@@ -407,6 +377,8 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         pos: BlockPos
     ) : StorageProvider {
 
+        private val logger by lazyLogger
+
         private val caches = buildMap {
             for (resourceType in listOf(ResourceType.ITEM, ResourceType.FLUID)) {
                 put(resourceType, buildMap {
@@ -418,14 +390,73 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         }
 
         override fun <T : TransferVariant<*>> getStorage(resourceType: ResourceType<T>): Storage<T> {
-            val caches = caches[resourceType] ?: throw RuntimeException("unsupported resource type")
+            val caches = caches[resourceType]
+                ?: throw RuntimeException("unsupported resource type: %s".format(resourceType))
 
             @Suppress("UNCHECKED_CAST")
             val storages = caches.entries.mapNotNull { (direction, cache) ->
                 cache.find(direction)
             } as List<Storage<T>>
+            logger.info("found {} storages: {}", resourceType, storages)
 
             return CombinedStorage(storages)
+        }
+    }
+
+    private inner class IngredientFactory : RecipeResolver.IngredientFactory {
+
+        private val fluidIngredientCache = HashMap<Item, ExactIngredient<FluidVariant>?>()
+
+        override fun create(
+            ingredients: Iterable<MinecraftIngredient>,
+            grid: Iterable<ItemStack>
+        ): Collection<Ingredient<*>> =
+            if (useFuzzyRecipe)
+                ingredients
+                    .filterNot { it.isEmpty }
+                    .groupBy { it }
+                    .map { (ingredient, list) -> createFuzzy(ingredient.matchingStacks, list.size.toLong()) }
+            else
+                grid
+                    .filterNot { it.isEmpty }
+                    .groupBy { it }
+                    .map { (item, stacks) -> createExact(item, stacks.size.toLong()) }
+
+        private fun createFuzzy(stacks: Array<ItemStack>, amount: Long): Ingredient<ItemVariant> =
+            if (stacks.size == 1)
+                createExact(stacks[0], amount)
+            else
+                FuzzyIngredient(stacks.map { createExact(it, amount) })
+
+        private fun createExact(stack: ItemStack, amount: Long): Ingredient<ItemVariant> {
+            val item = createExactWithRemainder(stack, amount)
+            if (useFluids) {
+                findFluidIngredient(stack)?.let { fluid ->
+                    return FluidSubstituteIngredient(fluid, item)
+                }
+            }
+            return item
+        }
+
+        private fun createExactWithRemainder(stack: ItemStack, amount: Long): Ingredient<ItemVariant> {
+            val item = ExactIngredient(stack.toVariant(), amount)
+            stack.item.recipeRemainder?.let { remainder ->
+                return IngredientWithRemainder(item, ItemVariant.of(remainder))
+            }
+            return item
+        }
+
+        private fun findFluidIngredient(stack: ItemStack) =
+            fluidIngredientCache.computeIfAbsent(stack.item, this::findFluidIngredientInternal)
+
+        private fun findFluidIngredientInternal(item: Item): ExactIngredient<FluidVariant>? {
+            val context = ContainerItemContext.withInitial(ItemStack(item, 1))
+            val storage = context.find(FluidStorage.ITEM) ?: return null
+            return withOuterTransaction { tx ->
+                storage.iterable(tx)
+                    .singleOrNull { !it.isResourceBlank }
+                    ?.let { ExactIngredient(it.resource, it.amount) }
+            }
         }
     }
 }

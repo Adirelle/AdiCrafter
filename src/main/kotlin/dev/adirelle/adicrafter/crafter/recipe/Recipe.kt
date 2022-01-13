@@ -5,14 +5,13 @@ package dev.adirelle.adicrafter.crafter
 import dev.adirelle.adicrafter.AdiCrafter
 import dev.adirelle.adicrafter.crafter.recipe.ingredient.Ingredient
 import dev.adirelle.adicrafter.utils.areEqual
-import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.minecraft.item.ItemStack
 import net.minecraft.util.Identifier
 
 open class Recipe(
     val id: Identifier,
     val output: ItemStack,
-    val ingredients: Collection<Ingredient<ItemVariant>>,
+    val ingredients: Collection<Ingredient<*>>,
 ) {
 
     open val isEmpty: Boolean = false

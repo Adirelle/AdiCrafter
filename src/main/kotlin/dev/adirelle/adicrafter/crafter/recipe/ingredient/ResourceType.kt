@@ -16,6 +16,8 @@ data class ResourceType<T : TransferVariant<*>>(
     val storageLookup: BlockApiLookup<Storage<T>, Direction>
 ) {
 
+    override fun toString() = resourceClass.simpleName
+
     companion object {
 
         val ITEM = ResourceType(ItemVariant::class.java, ItemStorage.SIDED)
@@ -26,7 +28,7 @@ data class ResourceType<T : TransferVariant<*>>(
             when (resource) {
                 is ItemVariant  -> ITEM
                 is FluidVariant -> FLUID
-                else            -> throw RuntimeException("unsupported variant type")
+                else            -> throw RuntimeException("unsupported resource: %s".format(resource))
             } as ResourceType<T>
     }
 }
