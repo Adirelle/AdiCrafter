@@ -60,9 +60,11 @@ class CrafterScreenHandler(
     companion object {
 
         private val FUZZY_MSG_ID = Identifier(AdiCrafter.MOD_ID, "screen-set-fuzzy")
+        private val FLUID_MSG_ID = Identifier(AdiCrafter.MOD_ID, "screen-set-fluid")
     }
 
     private val fuzzyToggle = WToggleButton(LiteralText("Fuzzy"))
+    private val fluidToggle = WToggleButton(LiteralText("Fluids"))
 
     // Client-side constructor
     @Environment(EnvType.CLIENT)
@@ -74,6 +76,13 @@ class CrafterScreenHandler(
         with(fuzzyToggle) {
             onToggle = Consumer { enabled ->
                 networking.send(FUZZY_MSG_ID) { it.writeBoolean(enabled) }
+            }
+            toggle = initialState.readBoolean()
+        }
+
+        with(fluidToggle) {
+            onToggle = Consumer { enabled ->
+                networking.send(FLUID_MSG_ID) { it.writeBoolean(enabled) }
             }
             toggle = initialState.readBoolean()
         }
@@ -94,6 +103,7 @@ class CrafterScreenHandler(
         root.add(outputSlot, 6, 2)
 
         root.add(fuzzyToggle, 6, 0)
+        root.add(fluidToggle, 6, 1)
 
         root.add(createPlayerInventoryPanel(true), 0, 4)
 
@@ -104,6 +114,9 @@ class CrafterScreenHandler(
             with(ScreenNetworking.of(this, SERVER)) {
                 receive(FUZZY_MSG_ID) { buf ->
                     setProperty(FUZZY_PROP_IDX, buf.readBoolean().toInt())
+                }
+                receive(FLUID_MSG_ID) { buf ->
+                    setProperty(FLUID_PROP_IDX, buf.readBoolean().toInt())
                 }
             }
         }

@@ -54,6 +54,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         private const val GRID_NBT_KEY = "Grid"
         private const val CONTENT_NBT_KEY = "Content"
         private const val FUZZY_NBT_KEY = "Fuzzy"
+        private const val FLUID_NBT_KEY = "Fluid"
 
         const val GRID_SIZE = Grid.SIZE
         const val GRID_WIDTH = Grid.WIDTH
@@ -69,7 +70,8 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         val GRID_SLOTS = GRID_FIRST_SLOT..GRID_LAST_SLOT
 
         const val FUZZY_PROP_IDX = 0
-        const val PROP_COUNT = 1
+        const val FLUID_PROP_IDX = 1
+        const val PROP_COUNT = 2
     }
 
     private val logger by lazyLogger
@@ -78,6 +80,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
     private var grid = Grid.empty()
     private var useFuzzyRecipe: Boolean = false
+    private var useFluids: Boolean = false
 
     private var recipe: Recipe = Recipe.EMPTY
     private var dirtyRecipe = false
@@ -108,6 +111,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
     override fun writeScreenOpeningData(player: ServerPlayerEntity, buf: PacketByteBuf) {
         buf.writeBoolean(useFuzzyRecipe)
+        buf.writeBoolean(useFluids)
     }
 
     fun onScreenHandlerClosed(handler: ScreenHandler) {
@@ -120,6 +124,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         grid = Grid.fromNbt(nbt.getList(GRID_NBT_KEY, NbtType.COMPOUND))
         content = ItemStack.fromNbt(nbt.getCompound(CONTENT_NBT_KEY))
         useFuzzyRecipe = nbt.getBoolean(FUZZY_NBT_KEY)
+        useFluids = nbt.getBoolean(FLUID_NBT_KEY)
 
         dirtyRecipe = true
         dirtyForecast = true
@@ -131,6 +136,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         nbt.put(GRID_NBT_KEY, grid.toNbt())
         nbt.put(CONTENT_NBT_KEY, content.toNbt())
         nbt.putBoolean(FUZZY_NBT_KEY, useFuzzyRecipe)
+        nbt.putBoolean(FLUID_NBT_KEY, useFluids)
     }
 
     fun tick() {
@@ -331,6 +337,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         override fun get(index: Int) =
             when (index) {
                 FUZZY_PROP_IDX -> useFuzzyRecipe.toInt()
+                FLUID_PROP_IDX -> useFluids.toInt()
                 else           -> throw IndexOutOfBoundsException()
             }
 
@@ -344,6 +351,10 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
                         markDirty()
                     }
                 }
+                FLUID_PROP_IDX -> {
+                    if (value.toBoolean() != useFluids) {
+                        logger.debug("updating fluid flag through property: {}", value.toBoolean())
+                        useFluids = value.toBoolean()
                         dirtyRecipe = true
                         markDirty()
                     }
