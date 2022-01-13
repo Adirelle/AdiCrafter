@@ -48,7 +48,7 @@ class CrafterBlock : BlockWithEntity(
         moved: Boolean
     ) {
         if (!state.isOf(newState.block)) {
-            //getBlockEntity(world, pos)?.dropContent()
+            getBlockEntity(world, pos)?.dropContent()
             super.onStateReplaced(state, world, pos, newState, moved)
         }
     }
