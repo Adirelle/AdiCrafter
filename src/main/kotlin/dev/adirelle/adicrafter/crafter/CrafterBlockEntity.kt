@@ -4,10 +4,13 @@ package dev.adirelle.adicrafter.crafter
 
 import dev.adirelle.adicrafter.crafter.recipe.Grid
 import dev.adirelle.adicrafter.crafter.recipe.RecipeResolver
+import dev.adirelle.adicrafter.utils.extensions.toBoolean
+import dev.adirelle.adicrafter.utils.extensions.toInt
 import dev.adirelle.adicrafter.utils.extensions.toNbt
 import dev.adirelle.adicrafter.utils.extensions.toVariant
 import dev.adirelle.adicrafter.utils.lazyLogger
 import dev.adirelle.adicrafter.utils.withOuterTransaction
+import io.github.cottonmc.cotton.gui.PropertyDelegateHolder
 import net.fabricmc.fabric.api.lookup.v1.block.BlockApiCache
 import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
@@ -27,7 +30,9 @@ import net.minecraft.inventory.SidedInventory
 import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NbtCompound
 import net.minecraft.screen.NamedScreenHandlerFactory
+import net.minecraft.screen.PropertyDelegate
 import net.minecraft.screen.ScreenHandler
+import net.minecraft.screen.ScreenHandlerContext
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.text.Text
 import net.minecraft.text.TranslatableText
@@ -39,6 +44,7 @@ import net.minecraft.world.WorldAccess
 class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
     BlockEntity(CrafterFeature.BLOCK_ENTITY_TYPE, pos, state),
     InventoryProvider,
+    PropertyDelegateHolder,
     NamedScreenHandlerFactory {
 
     companion object {
@@ -51,16 +57,22 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         const val GRID_WIDTH = Grid.WIDTH
         const val GRID_HEIGHT = Grid.HEIGHT
 
+        const val GRID_FIRST_SLOT = 0
+        const val GRID_LAST_SLOT = GRID_SIZE - 1
         const val OUTPUT_SLOT = GRID_SIZE
         const val RESULT_SLOT = OUTPUT_SLOT + 1
         const val CONTENT_SLOT = RESULT_SLOT + 1
         const val INVENTORY_SIZE = CONTENT_SLOT + 1
+
+        val GRID_SLOTS = GRID_FIRST_SLOT..GRID_LAST_SLOT
+
+        const val FUZZY_PROP_IDX = 0
+        const val PROP_COUNT = 1
     }
 
     private val logger by lazyLogger
 
-    val inventory = InventoryAdapter()
-    val storage = StorageAdapter()
+    val storage: Storage<ItemVariant> = StorageAdapter()
 
     private var grid = Grid.empty()
     private var fuzzyFlag: Boolean = false
@@ -75,13 +87,19 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
     private val openScreenHandlers = ArrayList<ScreenHandler>(2)
 
+    private val inventory = InventoryAdapter()
+    private val propertyDelegate = PropertyDelegateAdapter()
+
     override fun getInventory(state: BlockState, world: WorldAccess, pos: BlockPos): SidedInventory =
         inventory
+
+    override fun getPropertyDelegate(): PropertyDelegate =
+        propertyDelegate
 
     override fun getDisplayName(): Text = TranslatableText("block.adicrafter.crafter")
 
     override fun createMenu(syncId: Int, playerInventory: PlayerInventory, player: PlayerEntity): ScreenHandler {
-        val handler = CrafterScreenHandler(syncId, playerInventory, this.inventory, this)
+        val handler = CrafterScreenHandler(syncId, playerInventory, ScreenHandlerContext.create(world, pos))
         openScreenHandlers.add(handler)
         return handler
     }
@@ -190,7 +208,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
             apiCaches.entries.mapNotNull { (direction, cache) -> cache.find(direction) }
         )
 
-    inner class StorageAdapter : SingleSlotStorage<ItemVariant>, SnapshotParticipant<ItemStack>() {
+    private inner class StorageAdapter : SingleSlotStorage<ItemVariant>, SnapshotParticipant<ItemStack>() {
 
         override fun isResourceBlank() = recipe.isEmpty
         override fun getCapacity() = resource.item.maxCount.toLong()
@@ -230,7 +248,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         }
     }
 
-    inner class InventoryAdapter : SidedInventory {
+    private inner class InventoryAdapter : SidedInventory {
 
         override fun size() = INVENTORY_SIZE
         override fun isEmpty() = false
@@ -245,10 +263,10 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         }
 
         override fun isValid(slot: Int, stack: ItemStack) =
-            slot < grid.size
+            slot in GRID_SLOTS
 
         override fun clear() {
-            for (i in 0 until grid.size) {
+            for (i in GRID_SLOTS) {
                 grid[i] = ItemStack.EMPTY
             }
             dirtyRecipe = true
@@ -257,35 +275,36 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
         override fun getStack(slot: Int): ItemStack =
             when (slot) {
-                in 0 until GRID_SIZE -> grid[slot]
-                OUTPUT_SLOT          -> forecast
-                RESULT_SLOT          -> recipe.output
-                CONTENT_SLOT         -> content
-                else                 -> ItemStack.EMPTY
+                in GRID_SLOTS -> grid[slot]
+                OUTPUT_SLOT   -> forecast
+                RESULT_SLOT   -> recipe.output
+                CONTENT_SLOT  -> content
+                else          -> ItemStack.EMPTY
             }.copy()
 
         override fun removeStack(slot: Int, amount: Int): ItemStack =
             when (slot) {
-                in 0 until GRID_SIZE -> {
+                in GRID_SLOTS -> {
                     grid[slot] = ItemStack.EMPTY
                     dirtyRecipe = true
                     this@CrafterBlockEntity.markDirty()
                     ItemStack.EMPTY
                 }
-                OUTPUT_SLOT          -> {
+                OUTPUT_SLOT   -> {
                     withOuterTransaction { tx ->
                         val extracted = storage.extract(recipe.output.toVariant(), amount.toLong(), tx)
                         recipe.output.copy().apply { count = extracted.toInt() }
                     }
                 }
-                else                 -> ItemStack.EMPTY
+                else          ->
+                    ItemStack.EMPTY
             }
 
         override fun removeStack(slot: Int): ItemStack =
             removeStack(slot, getStack(slot).count)
 
         override fun setStack(slot: Int, stack: ItemStack) {
-            if (slot in 0 until GRID_SIZE) {
+            if (slot in GRID_SLOTS) {
                 grid[slot] = stack.copy().apply { count = 1 }
                 dirtyRecipe = true
                 this@CrafterBlockEntity.markDirty()
@@ -293,9 +312,36 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         }
 
         override fun canInsert(slot: Int, stack: ItemStack, dir: Direction?) =
-            slot < GRID_SIZE
+            slot in GRID_SLOTS
 
         override fun canExtract(slot: Int, stack: ItemStack, dir: Direction?) =
             slot == OUTPUT_SLOT && stack.isOf(recipe.output.item)
+    }
+
+    private inner class PropertyDelegateAdapter : PropertyDelegate {
+
+        override fun size() = PROP_COUNT
+
+        override fun get(index: Int) =
+            when (index) {
+                FUZZY_PROP_IDX -> fuzzyFlag.toInt()
+                else           -> throw IndexOutOfBoundsException()
+            }
+
+        override fun set(index: Int, value: Int) {
+            when (index) {
+                FUZZY_PROP_IDX -> {
+                    if (value.toBoolean() != fuzzyFlag) {
+                        logger.debug("updating fuzzy flag through property: {}", value.toBoolean())
+                        fuzzyFlag = value.toBoolean()
+                        dirtyRecipe = true
+                        markDirty()
+                    }
+                }
+                else           ->
+                    throw IndexOutOfBoundsException()
+            }
+        }
+
     }
 }

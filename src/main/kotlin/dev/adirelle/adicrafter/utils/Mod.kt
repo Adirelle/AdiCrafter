@@ -108,7 +108,10 @@ open class ModFeature(mod: Mod, val NAME: String) : SidedModInitalizer {
         BlockEntityType(factory, setOf(*blocks), type)
             .also { Registry.BLOCK_ENTITY_TYPE.register(id, it) }
 
-    fun <T : ScreenHandler> register(factory: (Int, PlayerInventory) -> T, id: Identifier = ID): ScreenHandlerType<T> =
+    fun <T : ScreenHandler> register(factory: (Int, PlayerInventory) -> T): ScreenHandlerType<T> =
+        register(factory, ID)
+
+    fun <T : ScreenHandler> register(factory: (Int, PlayerInventory) -> T, id: Identifier): ScreenHandlerType<T> =
         ScreenHandlerRegistry.registerSimple(id, factory)
 
     fun <T : ScreenHandler> register(

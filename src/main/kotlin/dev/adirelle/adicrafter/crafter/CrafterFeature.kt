@@ -8,6 +8,7 @@ import net.fabricmc.api.EnvType.CLIENT
 import net.fabricmc.api.Environment
 import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage
 import net.minecraft.item.ItemGroup
+import net.minecraft.screen.ScreenHandlerContext
 
 object CrafterFeature : ModFeature(AdiCrafter, "crafter") {
 
@@ -15,7 +16,8 @@ object CrafterFeature : ModFeature(AdiCrafter, "crafter") {
 
     val BLOCK_ENTITY_TYPE = register(::CrafterBlockEntity, BLOCK)
 
-    val SCREEN_HANDLER_TYPE = register(::CrafterScreenHandler)
+    val SCREEN_HANDLER_TYPE =
+        register { syncId, playerInv -> CrafterScreenHandler(syncId, playerInv, ScreenHandlerContext.EMPTY) }
 
     val ITEM = registerItemFor(BLOCK) {
         group(ItemGroup.REDSTONE)
