@@ -426,7 +426,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
             if (stacks.size == 1)
                 createExact(stacks[0], amount)
             else
-                FuzzyIngredient(stacks.map { createExact(it, amount) })
+                FuzzyIngredient(stacks.map { createExact(it, 1) }, amount)
 
         private fun createExact(stack: ItemStack, amount: Long): Ingredient<ItemVariant> {
             val item = createExactWithRemainder(stack, amount)
