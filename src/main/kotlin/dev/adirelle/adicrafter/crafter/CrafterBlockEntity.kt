@@ -188,7 +188,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         dirtyRecipe = false
 
         recipe = RecipeResolver.of(world).resolve(grid, ingredientFactory)
-        logger.info("recipe: {}, ingredients: {}", recipe.id, recipe.ingredients.joinToString())
+        logger.debug("recipe: {}, ingredients: {}", recipe.id, recipe.ingredients.joinToString())
 
         if (!content.isOf(recipe.output.item)) {
             dropContent()
@@ -397,7 +397,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
             val storages = caches.entries.mapNotNull { (direction, cache) ->
                 cache.find(direction)
             } as List<Storage<T>>
-            logger.info("found {} storages: {}", resourceType, storages)
+            logger.debug("found {} storages: {}", resourceType, storages)
 
             return CombinedStorage(storages)
         }

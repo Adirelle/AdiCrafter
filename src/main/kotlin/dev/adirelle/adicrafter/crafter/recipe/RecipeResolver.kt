@@ -7,7 +7,6 @@ import dev.adirelle.adicrafter.crafter.recipe.ingredient.Ingredient
 import dev.adirelle.adicrafter.utils.extensions.copyFrom
 import dev.adirelle.adicrafter.utils.lazyLogger
 import dev.adirelle.adicrafter.utils.memoize
-import dev.adirelle.adicrafter.utils.toItemString
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.inventory.CraftingInventory
 import net.minecraft.item.ItemStack
@@ -39,28 +38,11 @@ class RecipeResolver private constructor(
 
     fun resolve(grid: Grid, factory: IngredientFactory): Recipe {
         craftingGrid.copyFrom(grid.asList())
-        logger.info("grid:")
-        for ((idx, stack) in grid.withIndex()) {
-            if (stack.isEmpty) continue
-            logger.info("  #{}: {} -> {}", idx, stack.item.toItemString(), stack.item.recipeRemainder?.toItemString())
-        }
         return world.recipeManager
             .getFirstMatch(RecipeType.CRAFTING, craftingGrid, world)
             .filter { !it.isEmpty }
             .map {
-                logger.info("recipe ({}) ingredients:", it.id)
-                for ((idx, ingredient) in it.ingredients.withIndex()) {
-                    if (ingredient.isEmpty) continue
-                    logger.info(" #{}", idx)
-                    for (stack in ingredient.matchingStacks) {
-                        logger.info("   {} -> {}", stack.toItemString(), stack.item.recipeRemainder?.toItemString())
-                    }
-                }
                 val ingredients = factory.create(it.ingredients.filterNot { it.isEmpty }, grid.filterNot { it.isEmpty })
-                logger.info("result ingredients:")
-                for (ingredient in ingredients) {
-                    logger.info("  {}", ingredient)
-                }
                 Recipe(it.id, it.output, ingredients)
             }
             .orElse(Recipe.EMPTY)
