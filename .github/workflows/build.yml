@@ -33,3 +33,9 @@ jobs:
         with:
           name: packages
           path: build/libs/
+
+      - name: Upload to Modrinth
+        if: secrets.MODRINTH_TOKEN != "" && github.ref_type == "tag"
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        run: ./gradlew modrinth
