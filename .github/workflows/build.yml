@@ -4,6 +4,9 @@ on:
   - push
   - pull_request
 
+permissions:
+  contents: write
+
 concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
@@ -35,13 +38,11 @@ jobs:
           path: build/libs/
 
       - name: Upload to Modrinth
-        if: secrets.MODRINTH_TOKEN != "" && github.ref_type == "tag"
+        if: github.ref_type == 'tag'
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
         run: ./gradlew modrinth
 
       - name: Upload to Github Releases
-        if: secrets.GH_RELEASE_TOKEN != ""
-        env:
-          GH_RELEASE_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
+        if: github.ref_type == 'tag'
         run: ./gradlew githubRelease

@@ -98,8 +98,8 @@ task<TaskModrinthUpload>("modrinth") {
     versionName = modVersion
     versionType = when {
         "-alpha" in modVersion -> VersionType.ALPHA
-        "-beta" in modVersion -> VersionType.BETA
-        else -> VersionType.RELEASE
+        "-beta" in modVersion  -> VersionType.BETA
+        else                   -> VersionType.RELEASE
     }
 
     addGameVersion(minecraftVersion)
@@ -107,7 +107,7 @@ task<TaskModrinthUpload>("modrinth") {
 }
 
 githubRelease {
-    token(env["GH_RELEASE_TOKEN"])
+    token(env["GITHUB_TOKEN"])
     owner("Adirelle")
     repo("AdiCrafter")
     tagName(modVersion)
