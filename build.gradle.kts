@@ -1,3 +1,4 @@
+import com.github.gundy.semver4j.model.Version
 import com.modrinth.minotaur.TaskModrinthUpload
 import com.modrinth.minotaur.request.VersionType
 import org.jetbrains.changelog.date
@@ -9,8 +10,9 @@ plugins {
     val kotlinVersion: String by System.getProperties()
     kotlin("jvm").version(kotlinVersion)
 
-    id("org.jetbrains.changelog").version("1.3.1")
-    id("com.modrinth.minotaur").version("1.2.1")
+    id("org.jetbrains.changelog") version "1.3.1"
+    id("com.modrinth.minotaur") version "1.2.1"
+    id("com.github.breadmoirai.github-release") version "2.2.12"
 }
 
 base {
@@ -20,18 +22,18 @@ base {
 
 val env = System.getenv()
 
-val modVersion: String by project
-val releaseType = when {
-    "-alpha" in modVersion -> "ALPHA"
-    "-beta" in modVersion  -> "BETA"
-    else                   -> "RELEASE"
-}
-
 val minecraftVersion: String by project
-
-version = "${modVersion}+mc${minecraftVersion}"
-
 val mavenGroup: String by project
+
+val isSnapshot = env["GITHUB_REF"] != "tag"
+val modVersion =
+    if (!isSnapshot) env["GITHUB_REF_NAME"]!!
+    else "${project.property("modVersion")}-SNAPSHOT"
+
+val versionInfo = Version.fromString("${modVersion}+mc${minecraftVersion}")
+val baseVersion = with(versionInfo) { "${major}.${minor}.${patch}" }
+
+version = versionInfo.toString()
 group = mavenGroup
 
 minecraft {}
@@ -78,9 +80,11 @@ changelog {
     itemPrefix.set("*")
 }
 
+val versionChangelog = changelog.getOrNull(baseVersion) ?: changelog.getLatest()
+
 task<TaskModrinthUpload>("modrinth") {
     group = "upload"
-    onlyIf { env.contains("MODRINTH_TOKEN") }
+    onlyIf { !isSnapshot && "MODRINTH_TOKEN" in env.keys }
     dependsOn("build")
 
     val modrinthProjectId: String by project
@@ -88,14 +92,29 @@ task<TaskModrinthUpload>("modrinth") {
     projectId = modrinthProjectId
     token = env["MODRINTH_TOKEN"]
     uploadFile = tasks["remapJar"]
-    changelog = "CHANGELOG.md"
+    changelog = versionChangelog.toText()
 
     versionNumber = version.toString()
     versionName = modVersion
-    versionType = VersionType.valueOf(releaseType)
-    addGameVersion(minecraftVersion)
+    versionType = when {
+        "-alpha" in modVersion -> VersionType.ALPHA
+        "-beta" in modVersion -> VersionType.BETA
+        else -> VersionType.RELEASE
+    }
 
+    addGameVersion(minecraftVersion)
     addLoader("fabric")
+}
+
+githubRelease {
+    token(env["GH_RELEASE_TOKEN"])
+    owner("Adirelle")
+    repo("AdiCrafter")
+    tagName(modVersion)
+    body(versionChangelog.toText())
+    prerelease(versionInfo.preReleaseIdentifiers.isNotEmpty())
+    overwrite(true)
+    draft(isSnapshot)
 }
 
 tasks {
@@ -128,4 +147,3 @@ tasks {
         withSourcesJar()
     }
 }
-

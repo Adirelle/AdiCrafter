@@ -39,3 +39,9 @@ jobs:
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
         run: ./gradlew modrinth
+
+      - name: Upload to Github Releases
+        if: secrets.GH_RELEASE_TOKEN != ""
+        env:
+          GH_RELEASE_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
+        run: ./gradlew githubRelease
