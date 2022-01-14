@@ -225,13 +225,14 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
     private inner class StorageAdapter : SingleSlotStorage<ItemVariant>, SnapshotParticipant<ItemStack>() {
 
         override fun isResourceBlank() = recipe.isEmpty
-        override fun getCapacity() = resource.item.maxCount.toLong()
+        override fun getCapacity() = recipe.output.count.toLong()
         override fun getResource() = recipe.output.toVariant()
-        override fun getAmount() = content.count.toLong()
+        override fun getAmount() = forecast.count.toLong()
         override fun supportsInsertion() = false
         override fun insert(resource: ItemVariant, maxAmount: Long, tx: TransactionContext) = 0L
-        override fun exactView(transaction: TransactionContext, resource: ItemVariant): StorageView<ItemVariant> =
-            this
+        override fun exactView(transaction: TransactionContext, resource: ItemVariant): StorageView<ItemVariant>? =
+            if (resource.isOf(recipe.output.item)) this
+            else null
 
         override fun extract(resource: ItemVariant, maxAmount: Long, tx: TransactionContext): Long {
             if (maxAmount < 1 || recipe.isEmpty || !resource.matches(recipe.output)) return 0L
