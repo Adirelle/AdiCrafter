@@ -1,5 +1,6 @@
 import com.modrinth.minotaur.TaskModrinthUpload
 import com.modrinth.minotaur.request.VersionType
+import org.jetbrains.changelog.date
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
@@ -8,6 +9,7 @@ plugins {
     val kotlinVersion: String by System.getProperties()
     kotlin("jvm").version(kotlinVersion)
 
+    id("org.jetbrains.changelog").version("1.3.1")
     id("com.modrinth.minotaur").version("1.2.1")
 }
 
@@ -70,6 +72,12 @@ loom {
     }
 }
 
+changelog {
+    version.set(modVersion)
+    header.set(provider { "[${version.get()}] - ${date()}" })
+    itemPrefix.set("*")
+}
+
 task<TaskModrinthUpload>("modrinth") {
     group = "upload"
     onlyIf { env.contains("MODRINTH_TOKEN") }
@@ -80,6 +88,7 @@ task<TaskModrinthUpload>("modrinth") {
     projectId = modrinthProjectId
     token = env["MODRINTH_TOKEN"]
     uploadFile = tasks["remapJar"]
+    changelog = "CHANGELOG.md"
 
     versionNumber = version.toString()
     versionName = modVersion
