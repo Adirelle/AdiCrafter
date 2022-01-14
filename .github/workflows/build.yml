@@ -26,5 +26,10 @@ jobs:
         uses: gradle/gradle-build-action@v2
 
       - name: Build the mod
-        shell: bash
         run: ./gradlew build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: packages
+          path: build/libs/
