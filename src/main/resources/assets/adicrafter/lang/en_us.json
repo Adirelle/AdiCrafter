@@ -1,4 +1,10 @@
 {
     "block.adicrafter.crafter": "Automated crafter",
-    "item.adicrafter.crafter": "Automated crafter"
+    "item.adicrafter.crafter": "Automated crafter",
+    "gui.adicrafter.fuzzy.tooltip.title": "Fuzzy recipe?",
+    "gui.adicrafter.fuzzy.tooltip.enabled": "Enabled",
+    "gui.adicrafter.fuzzy.tooltip.disabled": "Disabled",
+    "gui.adicrafter.fluid.tooltip.title": "Fluid substitution?",
+    "gui.adicrafter.fluid.tooltip.enabled": "Enabled",
+    "gui.adicrafter.fluid.tooltip.disabled": "Disabled"
 }

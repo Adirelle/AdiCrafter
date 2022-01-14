@@ -1,12 +1,8 @@
 {
-    "parent": "minecraft:block/cube",
+    "parent": "minecraft:block/cube_bottom_top",
     "textures": {
-        "particle": "adicrafter:block/crafter_side",
-        "north": "adicrafter:block/crafter_side",
-        "south": "adicrafter:block/crafter_side",
-        "east": "adicrafter:block/crafter_side",
-        "west": "adicrafter:block/crafter_side",
-        "up": "adicrafter:block/crafter_top",
-        "down": "adicrafter:block/crafter_bottom"
+        "top": "adicrafter:block/crafter_top",
+        "bottom": "adicrafter:block/crafter_bottom",
+        "side": "adicrafter:block/crafter_side"
     }
 }
