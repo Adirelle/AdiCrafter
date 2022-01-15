@@ -28,10 +28,10 @@
                 "value": "dev.adirelle.adicrafter.AdiCrafter"
             }
         ],
-        "server": [
+        "rei": [
             {
                 "adapter": "kotlin",
-                "value": "dev.adirelle.adicrafter.AdiCrafter"
+                "value": "dev.adirelle.adicrafter.bridge.rei.REIPlugin"
             }
         ]
     },

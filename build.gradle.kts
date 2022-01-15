@@ -43,26 +43,35 @@ repositories {
         name = "CottonMC"
         url = uri("https://server.bbkr.space/artifactory/libs-release")
     }
-}
+    maven {
+        name = "shedaniel"
+        url = uri("https://maven.shedaniel.me")
+    }
 
-dependencies {
-    minecraft("com.mojang:minecraft:$minecraftVersion")
+    dependencies {
+        minecraft("com.mojang:minecraft:$minecraftVersion")
 
-    val yarnMappings: String by project
-    mappings("net.fabricmc:yarn:$yarnMappings:v2")
+        val yarnMappings: String by project
+        mappings("net.fabricmc:yarn:$yarnMappings:v2")
 
-    val loaderVersion: String by project
-    modImplementation("net.fabricmc:fabric-loader:$loaderVersion")
+        val loaderVersion: String by project
+        modImplementation("net.fabricmc:fabric-loader:$loaderVersion")
 
-    val fabricVersion: String by project
-    modImplementation("net.fabricmc.fabric-api:fabric-api:$fabricVersion")
+        val fabricVersion: String by project
+        modImplementation("net.fabricmc.fabric-api:fabric-api:$fabricVersion")
 
-    val fabricKotlinVersion: String by project
-    modImplementation("net.fabricmc:fabric-language-kotlin:$fabricKotlinVersion")
+        val fabricKotlinVersion: String by project
+        modImplementation("net.fabricmc:fabric-language-kotlin:$fabricKotlinVersion")
 
-    val libGuiVersion: String by project
-    modImplementation("io.github.cottonmc:LibGui:$libGuiVersion")
-    include("io.github.cottonmc:LibGui:$libGuiVersion")
+        val libGuiVersion: String by project
+        modImplementation("io.github.cottonmc:LibGui:$libGuiVersion")
+        include("io.github.cottonmc:LibGui:$libGuiVersion")
+
+        val roughlyEnoughItemsVersion: String by project
+        modCompileOnly("me.shedaniel:RoughlyEnoughItems-api-fabric:$roughlyEnoughItemsVersion")
+        modCompileOnly("me.shedaniel:RoughlyEnoughItems-default-plugin-fabric:$roughlyEnoughItemsVersion")
+        modRuntimeOnly("me.shedaniel:RoughlyEnoughItems-fabric:$roughlyEnoughItemsVersion")
+    }
 }
 
 loom {

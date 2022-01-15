@@ -13,6 +13,7 @@ import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.INVENTORY_SI
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.OUTPUT_SLOT
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.PROP_COUNT
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.RESULT_SLOT
+import dev.adirelle.adicrafter.crafter.recipe.RecipeLoader
 import dev.adirelle.adicrafter.utils.extensions.packetSender
 import dev.adirelle.adicrafter.utils.extensions.toInt
 import dev.adirelle.adicrafter.utils.lazyLogger
@@ -34,6 +35,9 @@ import net.minecraft.entity.player.PlayerInventory
 import net.minecraft.inventory.Inventory
 import net.minecraft.item.ItemStack
 import net.minecraft.network.PacketByteBuf
+import net.minecraft.recipe.CraftingRecipe
+import net.minecraft.recipe.ShapedRecipe
+import net.minecraft.recipe.ShapelessRecipe
 import net.minecraft.screen.ScreenHandlerContext
 import net.minecraft.screen.slot.Slot
 import net.minecraft.screen.slot.SlotActionType
@@ -63,6 +67,7 @@ class CrafterScreenHandler(
 
         private val FUZZY_MSG_ID = Identifier(AdiCrafter.MOD_ID, "screen-set-fuzzy")
         private val FLUID_MSG_ID = Identifier(AdiCrafter.MOD_ID, "screen-set-fluid")
+        private val RECIPE_MSG_ID = Identifier(AdiCrafter.MOD_ID, "screen-apply-recipe")
 
         private val TEXTURES = Texture(Identifier(AdiCrafter.MOD_ID, "textures/gui/crafter.png"))
         private val ARROW_TEX = TEXTURES.withUv(0f, 0f, 1f, 17f / 53)
@@ -82,6 +87,10 @@ class CrafterScreenHandler(
     private val sendFluidMessage =
         CLIENT.packetSender(this, FLUID_MSG_ID, PacketByteBuf::writeBoolean, PacketByteBuf::readBoolean)
         { setProperty(FLUID_PROP_IDX, it.toInt()) }
+
+    private val sendRecipeMessage =
+        CLIENT.packetSender(this, RECIPE_MSG_ID, PacketByteBuf::writeIdentifier, PacketByteBuf::readIdentifier)
+        { applyRecipe(it) }
 
     // Client-side constructor
     @Environment(EnvType.CLIENT)
@@ -136,6 +145,22 @@ class CrafterScreenHandler(
         super.close(player)
         withBlockEntity {
             it.onScreenHandlerClosed(this)
+        }
+    }
+
+    fun applyRecipe(recipe: CraftingRecipe) {
+        if (!recipe.fits(GRID_WIDTH, GRID_HEIGHT)) return
+        sendRecipeMessage(recipe.id)
+    }
+
+    private val recipeLoader by lazy { RecipeLoader(this.blockInventory, GRID_FIRST_SLOT, GRID_WIDTH, GRID_HEIGHT) }
+
+    fun applyRecipe(recipeId: Identifier) {
+        val recipe = world.recipeManager[recipeId].orElse(null) ?: return
+        when (recipe) {
+            is ShapedRecipe    -> recipeLoader.load(recipe)
+            is ShapelessRecipe -> recipeLoader.load(recipe)
+            else               -> logger.debug("unhandled recipe type: {}", recipe)
         }
     }
 
