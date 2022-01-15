@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+
 ### Added
 
 ### Changed
@@ -13,17 +14,14 @@
 
 ### Security
 
-## [0.1.0-alpha.1] - 2022-01-14
+## [0.2.0] - 2022-01-15
+
 ### Added
-* Added the automated crafter block.
 
-### Changed
+* [RoughlyEnoughItems](https://www.curseforge.com/minecraft/mc-mods/roughly-enough-items) support
 
-### Deprecated
+## [0.1.0] - 2022-01-14
 
-### Removed
+### Added
 
-### Fixed
-
-### Security
-
+* The automated crafter block.
