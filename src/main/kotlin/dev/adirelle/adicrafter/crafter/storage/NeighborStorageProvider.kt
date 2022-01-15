@@ -12,24 +12,21 @@ import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Direction
 import java.util.function.Supplier
 
-class NeighborStorageProvider<T, S : TransferVariant<T>>(
+class NeighborStorageProvider<T, V : TransferVariant<T>>(
     override val type: ResourceType<T>,
-    lookup: BlockApiLookup<Storage<S>, Direction>,
+    lookup: BlockApiLookup<Storage<V>, Direction>,
     world: ServerWorld,
     pos: BlockPos
-) : SingleTypeStorageProvider<T> {
+) : StorageCompoundProvider.SingleTypeStorageProvider<T, V> {
 
-    private val caches: List<Supplier<Storage<S>?>> = buildList {
+    private val caches: List<Supplier<Storage<V>?>> = buildList {
         for (dir in Direction.values()) {
             val cache = BlockApiCache.create(lookup, world, pos.offset(dir))
             add { cache.find(dir.opposite) }
         }
     }
 
-    override fun <Z> getStorage(type: ResourceType<Z>): Storage<TransferVariant<Z>> {
-        if (type != this.type) return CombinedStorage(listOf())
-        val storage = CombinedStorage(caches.mapNotNull { it.get() })
-        @Suppress("UNCHECKED_CAST")
-        return storage as Storage<TransferVariant<Z>>
+    override fun getStorage(): Storage<V> {
+        return CombinedStorage(caches.mapNotNull { it.get() })
     }
 }

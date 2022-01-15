@@ -2,11 +2,14 @@
 
 package dev.adirelle.adicrafter.crafter
 
+import dev.adirelle.adicrafter.crafter.power.PowerVariant
+import dev.adirelle.adicrafter.crafter.power.PowerVariant.INSTANCE
 import dev.adirelle.adicrafter.crafter.recipe.Grid
 import dev.adirelle.adicrafter.crafter.recipe.RecipeResolver
 import dev.adirelle.adicrafter.crafter.recipe.ingredient.*
 import dev.adirelle.adicrafter.crafter.storage.NeighborStorageProvider
 import dev.adirelle.adicrafter.crafter.storage.ResourceType
+import dev.adirelle.adicrafter.crafter.storage.SingleStorageProvider
 import dev.adirelle.adicrafter.crafter.storage.StorageCompoundProvider
 import dev.adirelle.adicrafter.utils.extensions.toBoolean
 import dev.adirelle.adicrafter.utils.extensions.toInt
@@ -23,6 +26,7 @@ import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage
 import net.fabricmc.fabric.api.transfer.v1.storage.StorageView
 import net.fabricmc.fabric.api.transfer.v1.storage.base.SingleSlotStorage
+import net.fabricmc.fabric.api.transfer.v1.storage.base.SingleVariantStorage
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 import net.fabricmc.fabric.api.transfer.v1.transaction.base.SnapshotParticipant
 import net.fabricmc.fabric.api.util.NbtType
@@ -62,6 +66,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         private const val CONTENT_NBT_KEY = "Content"
         private const val FUZZY_NBT_KEY = "Fuzzy"
         private const val FLUID_NBT_KEY = "Fluid"
+        private const val POWER_NBT_KEY = "Power"
 
         const val GRID_SIZE = Grid.SIZE
         const val GRID_WIDTH = Grid.WIDTH
@@ -78,7 +83,9 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
         const val FUZZY_PROP_IDX = 0
         const val FLUID_PROP_IDX = 1
-        const val PROP_COUNT = 2
+        const val POWER_PROP_IDX = 2
+        const val POWER_MAX_PROP_IDX = 3
+        const val PROP_COUNT = 4
     }
 
     private val logger by lazyLogger
@@ -96,6 +103,8 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
     private var content: ItemStack = ItemStack.EMPTY
 
+    private val powerStorage = PowerStorage(1000L)
+
     private var forecast: ItemStack = ItemStack.EMPTY
     private var dirtyForecast = false
 
@@ -110,7 +119,8 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
             ?.let { world ->
                 StorageCompoundProvider.of(
                     NeighborStorageProvider(ResourceType.ITEM, ItemStorage.SIDED, world, pos),
-                    NeighborStorageProvider(ResourceType.FLUID, FluidStorage.SIDED, world, pos)
+                    NeighborStorageProvider(ResourceType.FLUID, FluidStorage.SIDED, world, pos),
+                    SingleStorageProvider(ResourceType.POWER, powerStorage)
                 )
             }
             ?: StorageCompoundProvider.of()
@@ -146,6 +156,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         content = ItemStack.fromNbt(nbt.getCompound(CONTENT_NBT_KEY))
         useFuzzyRecipe = nbt.getBoolean(FUZZY_NBT_KEY)
         useFluids = nbt.getBoolean(FLUID_NBT_KEY)
+        powerStorage.amount = nbt.getLong(POWER_NBT_KEY)
 
         dirtyRecipe = true
         dirtyForecast = true
@@ -158,12 +169,14 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         nbt.put(CONTENT_NBT_KEY, content.toNbt())
         nbt.putBoolean(FUZZY_NBT_KEY, useFuzzyRecipe)
         nbt.putBoolean(FLUID_NBT_KEY, useFluids)
+        nbt.putLong(POWER_NBT_KEY, powerStorage.amount)
     }
 
     fun tick() {
         val recipeUpdated = updateRecipe()
+        val powerUpdated = updatePower()
         val forecastUpdated = updateForecast()
-        if (recipeUpdated || forecastUpdated) {
+        if (recipeUpdated || powerUpdated || forecastUpdated) {
             notifyScreenHandlers()
         }
     }
@@ -226,6 +239,13 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
                 crafted.count = storage.extract(ItemVariant.of(this), count.toLong(), tx).toInt()
                 crafted
             }
+        }
+
+    private fun updatePower() =
+        withOuterTransaction { tx ->
+            val inserted = powerStorage.insert(INSTANCE, 10L, tx)
+            tx.commit()
+            inserted > 0
         }
 
     private inner class StorageAdapter : SingleSlotStorage<ItemVariant>, SnapshotParticipant<ItemStack>() {
@@ -339,34 +359,49 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
             slot == OUTPUT_SLOT && stack.isOf(recipe.output.item)
     }
 
+    private inner class PowerStorage(val innerCapacity: Long) : SingleVariantStorage<PowerVariant>() {
+
+        override fun onFinalCommit() {
+            dirtyForecast = true
+            markDirty()
+        }
+
+        override fun getCapacity(variant: PowerVariant) = innerCapacity
+        override fun getBlankVariant() = INSTANCE
+    }
+
     private inner class PropertyDelegateAdapter : PropertyDelegate {
 
         override fun size() = PROP_COUNT
 
         override fun get(index: Int) =
             when (index) {
-                FUZZY_PROP_IDX -> useFuzzyRecipe.toInt()
-                FLUID_PROP_IDX -> useFluids.toInt()
-                else           -> throw IndexOutOfBoundsException()
+                FUZZY_PROP_IDX     -> useFuzzyRecipe.toInt()
+                FLUID_PROP_IDX     -> useFluids.toInt()
+                POWER_PROP_IDX     -> powerStorage.amount.toInt()
+                POWER_MAX_PROP_IDX -> powerStorage.capacity.toInt()
+                else               -> throw IndexOutOfBoundsException()
             }
 
         override fun set(index: Int, value: Int) {
             when (index) {
-                FUZZY_PROP_IDX -> {
+                FUZZY_PROP_IDX     -> {
                     if (value.toBoolean() != useFuzzyRecipe) {
                         useFuzzyRecipe = value.toBoolean()
                         dirtyRecipe = true
                         markDirty()
                     }
                 }
-                FLUID_PROP_IDX -> {
+                FLUID_PROP_IDX     -> {
                     if (value.toBoolean() != useFluids) {
                         useFluids = value.toBoolean()
                         dirtyRecipe = true
                         markDirty()
                     }
                 }
-                else           ->
+                POWER_PROP_IDX     -> logger.warn("trying to set power")
+                POWER_MAX_PROP_IDX -> logger.warn("trying to set maximum power")
+                else               ->
                     throw IndexOutOfBoundsException()
             }
         }

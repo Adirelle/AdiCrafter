@@ -3,6 +3,8 @@
 package dev.adirelle.adicrafter.crafter.recipe
 
 import dev.adirelle.adicrafter.crafter.Recipe
+import dev.adirelle.adicrafter.crafter.power.PowerVariant
+import dev.adirelle.adicrafter.crafter.recipe.ingredient.ExactIngredient
 import dev.adirelle.adicrafter.crafter.recipe.ingredient.Ingredient
 import dev.adirelle.adicrafter.utils.extensions.copyFrom
 import dev.adirelle.adicrafter.utils.lazyLogger
@@ -10,6 +12,7 @@ import dev.adirelle.adicrafter.utils.memoize
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.inventory.CraftingInventory
 import net.minecraft.item.ItemStack
+import net.minecraft.recipe.CraftingRecipe
 import net.minecraft.recipe.RecipeType
 import net.minecraft.screen.ScreenHandler
 import net.minecraft.world.World
@@ -42,18 +45,25 @@ class RecipeResolver private constructor(
             .getFirstMatch(RecipeType.CRAFTING, craftingGrid, world)
             .filter { !it.isEmpty }
             .map { recipe ->
-                val ingredients = buildList {
-                    addAll(
-                        factory.create(
-                            recipe.ingredients.filterNot { it.isEmpty },
-                            grid.filterNot { it.isEmpty }
-                        )
-                    )
-                }
-                Recipe(recipe.id, recipe.output, ingredients)
+                Recipe(recipe.id, recipe.output, mapIngredients(grid, factory, recipe))
             }
             .orElse(Recipe.EMPTY)
     }
+
+    private fun mapIngredients(
+        grid: Grid,
+        factory: IngredientFactory,
+        recipe: CraftingRecipe
+    ): Collection<Ingredient<*>> =
+        buildList {
+            addAll(
+                factory.create(
+                    recipe.ingredients.filterNot { it.isEmpty },
+                    grid.filterNot { it.isEmpty }
+                )
+            )
+            add(ExactIngredient(PowerVariant.INSTANCE, 100))
+        }
 
     fun interface IngredientFactory {
 

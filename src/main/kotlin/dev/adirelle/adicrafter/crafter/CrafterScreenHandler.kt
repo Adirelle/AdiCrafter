@@ -11,6 +11,8 @@ import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.GRID_SLOTS
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.GRID_WIDTH
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.INVENTORY_SIZE
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.OUTPUT_SLOT
+import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.POWER_MAX_PROP_IDX
+import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.POWER_PROP_IDX
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.PROP_COUNT
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.RESULT_SLOT
 import dev.adirelle.adicrafter.crafter.recipe.RecipeLoader
@@ -22,6 +24,7 @@ import io.github.cottonmc.cotton.gui.SyncedGuiDescription
 import io.github.cottonmc.cotton.gui.networking.NetworkSide.CLIENT
 import io.github.cottonmc.cotton.gui.networking.ScreenNetworking
 import io.github.cottonmc.cotton.gui.widget.*
+import io.github.cottonmc.cotton.gui.widget.WBar.Direction.RIGHT
 import io.github.cottonmc.cotton.gui.widget.data.Texture
 import net.fabricmc.api.EnvType
 import net.fabricmc.api.Environment
@@ -75,6 +78,10 @@ class CrafterScreenHandler(
         private val FLUID_ON_TEX = TEXTURES.withUv(18f / 35, 18f / 54, 1f, 35f / 53)
         private val FUZZY_OFF_TEX = TEXTURES.withUv(0f, 36f / 54, 17f / 35, 1f)
         private val FUZZY_ON_TEX = TEXTURES.withUv(18f / 35, 36f / 54, 1f, 1f)
+
+        private val BAR_TEXTURES = Texture(Identifier("minecraft", "textures/gui/bars.png"))
+        private val POWER_BAR_BACKGROUND = BAR_TEXTURES.withUv(0f, 20f / 255, 182f / 255, 25f / 255)
+        private val POWER_BAR_FOREGROUND = BAR_TEXTURES.withUv(0f, 25f / 255, 182f / 255, 30f / 255)
     }
 
     private val fuzzyToggle = WFuzzyButton()
@@ -127,6 +134,11 @@ class CrafterScreenHandler(
 
         root.add(fuzzyToggle, 7, 0)
         root.add(fluidToggle, 8, 0)
+
+        val powerBar = WBar(POWER_BAR_BACKGROUND, POWER_BAR_FOREGROUND, POWER_PROP_IDX, POWER_MAX_PROP_IDX, RIGHT)
+        root.add(powerBar, 4, 4)
+        powerBar.setLocation(root.insets.left + 18 * 4, root.insets.top + 18 * 4 - 5)
+        powerBar.setSize(18 * 4, 5)
 
         root.add(createPlayerInventoryPanel(true), 0, 4)
 

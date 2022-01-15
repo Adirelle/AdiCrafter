@@ -4,6 +4,9 @@
 
 ### Added
 
+* The automated crafter now consumes power from an internal storage that automatically refills steadily. When fully
+  loaded, this allows to craft 10 times in a row.
+
 ### Changed
 
 ### Deprecated
