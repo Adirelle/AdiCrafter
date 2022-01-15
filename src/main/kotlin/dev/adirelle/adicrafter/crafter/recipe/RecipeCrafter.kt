@@ -2,7 +2,7 @@
 
 package dev.adirelle.adicrafter.crafter
 
-import dev.adirelle.adicrafter.crafter.recipe.ingredient.StorageProvider
+import dev.adirelle.adicrafter.crafter.storage.StorageProvider
 import dev.adirelle.adicrafter.utils.withNestedTransaction
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.StorageView

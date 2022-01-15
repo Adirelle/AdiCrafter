@@ -2,14 +2,15 @@
 
 package dev.adirelle.adicrafter.crafter.recipe.ingredient
 
-import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariant
-import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
+import dev.adirelle.adicrafter.crafter.storage.StorageProvider
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
+import net.minecraft.fluid.Fluid
+import net.minecraft.item.Item
 
 class FluidSubstituteIngredient(
-    private val fluid: ExactIngredient<FluidVariant>,
-    private val item: Ingredient<ItemVariant>
-) : Ingredient<ItemVariant> {
+    private val fluid: ExactIngredient<Fluid>,
+    private val item: Ingredient<Item>
+) : Ingredient<Item> {
 
     override val amount by item::amount
 

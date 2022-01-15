@@ -2,17 +2,22 @@
 
 package dev.adirelle.adicrafter.crafter.recipe.ingredient
 
+import dev.adirelle.adicrafter.crafter.storage.ResourceType
+import dev.adirelle.adicrafter.crafter.storage.StorageProvider
 import dev.adirelle.adicrafter.utils.toItemString
 import dev.adirelle.adicrafter.utils.withNestedTransaction
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
+import net.minecraft.item.Item
 
 class IngredientWithRemainder(
-    private val consumed: Ingredient<ItemVariant>,
-    val remainder: ItemVariant,
-) : Ingredient<ItemVariant> {
+    private val consumed: Ingredient<Item>,
+    val remainder: Item,
+) : Ingredient<Item> {
 
     override val amount by consumed::amount
+
+    private val remainderVariant = ItemVariant.of(remainder)
 
     override fun extractFrom(provider: StorageProvider, maxAmount: Long, tx: TransactionContext): Long {
         val fixedAmount = withNestedTransaction(tx) { nested ->
@@ -34,7 +39,7 @@ class IngredientWithRemainder(
     ): Pair<Long, Long> {
         val storage = provider.getStorage(ResourceType.ITEM)
         val extracted = consumed.extractFrom(provider, maxAmount, tx)
-        val putBack = storage.insert(remainder, extracted, tx)
+        val putBack = storage.insert(remainderVariant, extracted, tx)
         return Pair(extracted, putBack)
     }
 

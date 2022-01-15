@@ -2,10 +2,10 @@
 
 package dev.adirelle.adicrafter.crafter.recipe.ingredient
 
-import net.fabricmc.fabric.api.transfer.v1.storage.TransferVariant
+import dev.adirelle.adicrafter.crafter.storage.StorageProvider
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 
-interface Ingredient<T : TransferVariant<*>> {
+interface Ingredient<T> {
 
     val amount: Long
 

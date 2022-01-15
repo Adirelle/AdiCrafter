@@ -5,6 +5,9 @@ package dev.adirelle.adicrafter.crafter
 import dev.adirelle.adicrafter.crafter.recipe.Grid
 import dev.adirelle.adicrafter.crafter.recipe.RecipeResolver
 import dev.adirelle.adicrafter.crafter.recipe.ingredient.*
+import dev.adirelle.adicrafter.crafter.storage.NeighborStorageProvider
+import dev.adirelle.adicrafter.crafter.storage.ResourceType
+import dev.adirelle.adicrafter.crafter.storage.StorageCompoundProvider
 import dev.adirelle.adicrafter.utils.extensions.toBoolean
 import dev.adirelle.adicrafter.utils.extensions.toInt
 import dev.adirelle.adicrafter.utils.extensions.toNbt
@@ -12,16 +15,13 @@ import dev.adirelle.adicrafter.utils.extensions.toVariant
 import dev.adirelle.adicrafter.utils.lazyLogger
 import dev.adirelle.adicrafter.utils.withOuterTransaction
 import io.github.cottonmc.cotton.gui.PropertyDelegateHolder
-import net.fabricmc.fabric.api.lookup.v1.block.BlockApiCache
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory
 import net.fabricmc.fabric.api.transfer.v1.context.ContainerItemContext
 import net.fabricmc.fabric.api.transfer.v1.fluid.FluidStorage
-import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariant
+import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage
 import net.fabricmc.fabric.api.transfer.v1.storage.StorageView
-import net.fabricmc.fabric.api.transfer.v1.storage.TransferVariant
-import net.fabricmc.fabric.api.transfer.v1.storage.base.CombinedStorage
 import net.fabricmc.fabric.api.transfer.v1.storage.base.SingleSlotStorage
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 import net.fabricmc.fabric.api.transfer.v1.transaction.base.SnapshotParticipant
@@ -31,6 +31,7 @@ import net.minecraft.block.InventoryProvider
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.entity.player.PlayerInventory
+import net.minecraft.fluid.Fluid
 import net.minecraft.inventory.SidedInventory
 import net.minecraft.item.Item
 import net.minecraft.item.ItemStack
@@ -106,8 +107,13 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
     private val storageProvider by lazy {
         (world as? ServerWorld?)
-            ?.let { NeighboringStorageProvider(it, pos) }
-            ?: NoStorageProvider()
+            ?.let { world ->
+                StorageCompoundProvider.of(
+                    NeighborStorageProvider(ResourceType.ITEM, ItemStorage.SIDED, world, pos),
+                    NeighborStorageProvider(ResourceType.FLUID, FluidStorage.SIDED, world, pos)
+                )
+            }
+            ?: StorageCompoundProvider.of()
     }
 
     override fun getInventory(state: BlockState, world: WorldAccess, pos: BlockPos): SidedInventory =
@@ -366,47 +372,9 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         }
     }
 
-    private class NoStorageProvider : StorageProvider {
-
-        override fun <T : TransferVariant<*>> getStorage(resourceType: ResourceType<T>): Storage<T> {
-            throw RuntimeException("should not be used on client")
-        }
-    }
-
-    private class NeighboringStorageProvider(
-        world: ServerWorld,
-        pos: BlockPos
-    ) : StorageProvider {
-
-        private val logger by lazyLogger
-
-        private val caches = buildMap {
-            for (resourceType in listOf(ResourceType.ITEM, ResourceType.FLUID)) {
-                put(resourceType, buildMap {
-                    for (direction in Direction.values()) {
-                        put(direction, BlockApiCache.create(resourceType.storageLookup, world, pos.offset(direction)))
-                    }
-                })
-            }
-        }
-
-        override fun <T : TransferVariant<*>> getStorage(resourceType: ResourceType<T>): Storage<T> {
-            val caches = caches[resourceType]
-                ?: throw RuntimeException("unsupported resource type: %s".format(resourceType))
-
-            @Suppress("UNCHECKED_CAST")
-            val storages = caches.entries.mapNotNull { (direction, cache) ->
-                cache.find(direction)
-            } as List<Storage<T>>
-            logger.debug("found {} storages: {}", resourceType, storages)
-
-            return CombinedStorage(storages)
-        }
-    }
-
     private inner class IngredientFactory : RecipeResolver.IngredientFactory {
 
-        private val fluidIngredientCache = HashMap<Item, ExactIngredient<FluidVariant>?>()
+        private val fluidIngredientCache = HashMap<Item, ExactIngredient<Fluid>?>()
 
         override fun create(
             ingredients: Iterable<MinecraftIngredient>,
@@ -423,13 +391,13 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
                     .groupBy { it }
                     .map { (item, stacks) -> createExact(item, stacks.size.toLong()) }
 
-        private fun createFuzzy(stacks: Array<ItemStack>, amount: Long): Ingredient<ItemVariant> =
+        private fun createFuzzy(stacks: Array<ItemStack>, amount: Long): Ingredient<Item> =
             if (stacks.size == 1)
                 createExact(stacks[0], amount)
             else
                 FuzzyIngredient(stacks.map { createExact(it, 1) }, amount)
 
-        private fun createExact(stack: ItemStack, amount: Long): Ingredient<ItemVariant> {
+        private fun createExact(stack: ItemStack, amount: Long): Ingredient<Item> {
             val item = createExactWithRemainder(stack, amount)
             if (useFluids) {
                 findFluidIngredient(stack)?.let { fluid ->
@@ -439,10 +407,10 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
             return item
         }
 
-        private fun createExactWithRemainder(stack: ItemStack, amount: Long): Ingredient<ItemVariant> {
+        private fun createExactWithRemainder(stack: ItemStack, amount: Long): Ingredient<Item> {
             val item = ExactIngredient(stack.toVariant(), amount)
             stack.item.recipeRemainder?.let { remainder ->
-                return IngredientWithRemainder(item, ItemVariant.of(remainder))
+                return IngredientWithRemainder(item, remainder)
             }
             return item
         }
@@ -450,7 +418,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         private fun findFluidIngredient(stack: ItemStack) =
             fluidIngredientCache.computeIfAbsent(stack.item, this::findFluidIngredientInternal)
 
-        private fun findFluidIngredientInternal(item: Item): ExactIngredient<FluidVariant>? {
+        private fun findFluidIngredientInternal(item: Item): ExactIngredient<Fluid>? {
             val context = ContainerItemContext.withInitial(ItemStack(item, 1))
             val storage = context.find(FluidStorage.ITEM) ?: return null
             return withOuterTransaction { tx ->

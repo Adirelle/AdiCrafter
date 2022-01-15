@@ -41,9 +41,16 @@ class RecipeResolver private constructor(
         return world.recipeManager
             .getFirstMatch(RecipeType.CRAFTING, craftingGrid, world)
             .filter { !it.isEmpty }
-            .map {
-                val ingredients = factory.create(it.ingredients.filterNot { it.isEmpty }, grid.filterNot { it.isEmpty })
-                Recipe(it.id, it.output, ingredients)
+            .map { recipe ->
+                val ingredients = buildList {
+                    addAll(
+                        factory.create(
+                            recipe.ingredients.filterNot { it.isEmpty },
+                            grid.filterNot { it.isEmpty }
+                        )
+                    )
+                }
+                Recipe(recipe.id, recipe.output, ingredients)
             }
             .orElse(Recipe.EMPTY)
     }

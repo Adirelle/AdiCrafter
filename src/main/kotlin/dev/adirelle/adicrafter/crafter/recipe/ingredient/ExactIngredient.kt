@@ -2,19 +2,18 @@
 
 package dev.adirelle.adicrafter.crafter.recipe.ingredient
 
+import dev.adirelle.adicrafter.crafter.storage.StorageProvider
 import dev.adirelle.adicrafter.utils.extensions.toItemString
 import net.fabricmc.fabric.api.transfer.v1.storage.TransferVariant
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 
-class ExactIngredient<T : TransferVariant<*>>(
-    val resource: T,
+class ExactIngredient<T>(
+    val resource: TransferVariant<T>,
     override val amount: Long
 ) : Ingredient<T> {
 
-    val resourceType: ResourceType<T> = ResourceType.typeOf(resource)
-
     override fun extractFrom(provider: StorageProvider, maxAmount: Long, tx: TransactionContext) =
-        provider.getStorage(resourceType).extract(resource, maxAmount, tx)
+        provider.getStorage(resource).extract(resource, maxAmount, tx)
 
     override fun toString() = "exactly(%d %s)".format(amount, resource.toItemString())
 }
