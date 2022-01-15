@@ -54,7 +54,7 @@ class RecipeResolver private constructor(
         grid: Grid,
         factory: IngredientFactory,
         recipe: CraftingRecipe
-    ): Collection<Ingredient<*>> =
+    ): Collection<Ingredient<*, *>> =
         buildList {
             addAll(
                 factory.create(
@@ -70,7 +70,7 @@ class RecipeResolver private constructor(
         fun create(
             ingredients: Iterable<MinecraftIngredient>,
             grid: Iterable<ItemStack>
-        ): Collection<Ingredient<*>>
+        ): Collection<Ingredient<*, *>>
     }
 
 }

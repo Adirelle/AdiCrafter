@@ -16,6 +16,7 @@ import dev.adirelle.adicrafter.utils.extensions.toInt
 import dev.adirelle.adicrafter.utils.extensions.toNbt
 import dev.adirelle.adicrafter.utils.extensions.toVariant
 import dev.adirelle.adicrafter.utils.lazyLogger
+import dev.adirelle.adicrafter.utils.toItemString
 import dev.adirelle.adicrafter.utils.withOuterTransaction
 import io.github.cottonmc.cotton.gui.PropertyDelegateHolder
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory
@@ -35,7 +36,6 @@ import net.minecraft.block.InventoryProvider
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.entity.player.PlayerInventory
-import net.minecraft.fluid.Fluid
 import net.minecraft.inventory.SidedInventory
 import net.minecraft.item.Item
 import net.minecraft.item.ItemStack
@@ -85,7 +85,9 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         const val FLUID_PROP_IDX = 1
         const val POWER_PROP_IDX = 2
         const val POWER_MAX_PROP_IDX = 3
-        const val PROP_COUNT = 4
+        const val FIRST_INGR_PROP_IDX = 4
+        const val LAST_INGR_PROP_IDX = FIRST_INGR_PROP_IDX + GRID_SIZE - 1
+        const val PROP_COUNT = LAST_INGR_PROP_IDX + 1
     }
 
     private val logger by lazyLogger
@@ -105,6 +107,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
     private val powerStorage = PowerStorage(1000L)
 
+    private val ingredientFeedback = IntArray(GRID_SIZE) { 0 }
     private var forecast: ItemStack = ItemStack.EMPTY
     private var dirtyForecast = false
 
@@ -207,7 +210,6 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         dirtyRecipe = false
 
         recipe = RecipeResolver.of(world).resolve(grid, ingredientFactory)
-        logger.debug("recipe: {}, ingredients: {}", recipe.id, recipe.ingredients.joinToString())
 
         if (!content.isOf(recipe.output.item)) {
             dropContent()
@@ -226,10 +228,16 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         dirtyForecast = false
 
         val newForecast = computeForecast()
-        if (ItemStack.areEqual(forecast, newForecast)) return false
+        val updated = !ItemStack.areEqual(forecast, newForecast)
 
-        forecast = newForecast
-        return true
+        if (updated) {
+            forecast = newForecast
+        }
+        if (openScreenHandlers.isNotEmpty()) {
+            updateIngredientFeedback()
+        }
+
+        return updated
     }
 
     private fun computeForecast(): ItemStack =
@@ -240,6 +248,29 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
                 crafted
             }
         }
+
+    private fun updateIngredientFeedback() {
+        if (recipe.isEmpty || !forecast.isEmpty) {
+            for (i in ingredientFeedback.indices) {
+                ingredientFeedback[i] = 0
+            }
+            return
+        }
+        withOuterTransaction { tx ->
+            for ((i, stack) in grid.withIndex()) {
+                ingredientFeedback[i] = stack
+                    .takeUnless { it.isEmpty }
+                    ?.let { s -> recipe.ingredients.firstOrNull { it.matches(ItemVariant.of(s)) } }
+                    ?.let { 1 - it.extractFrom(storageProvider, 1, tx).toInt() }
+                    ?: 0
+            }
+            tx.abort()
+        }
+        logger.info("item feedback:")
+        for ((i, value) in ingredientFeedback.withIndex()) {
+            logger.info("#{}: {} -> {}", i, grid[i].item.toItemString(), value)
+        }
+    }
 
     private fun updatePower() =
         withOuterTransaction { tx ->
@@ -376,45 +407,56 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
         override fun get(index: Int) =
             when (index) {
-                FUZZY_PROP_IDX     -> useFuzzyRecipe.toInt()
-                FLUID_PROP_IDX     -> useFluids.toInt()
-                POWER_PROP_IDX     -> powerStorage.amount.toInt()
-                POWER_MAX_PROP_IDX -> powerStorage.capacity.toInt()
-                else               -> throw IndexOutOfBoundsException()
+                FUZZY_PROP_IDX                             ->
+                    useFuzzyRecipe.toInt()
+                FLUID_PROP_IDX                             ->
+                    useFluids.toInt()
+                POWER_PROP_IDX                             ->
+                    powerStorage.amount.toInt()
+                POWER_MAX_PROP_IDX                         ->
+                    powerStorage.capacity.toInt()
+                in FIRST_INGR_PROP_IDX..LAST_INGR_PROP_IDX ->
+                    ingredientFeedback[index - FIRST_INGR_PROP_IDX]
+                else                                       ->
+                    throw IndexOutOfBoundsException("get: invalidate property delegate index: %d".format(index))
             }
 
         override fun set(index: Int, value: Int) {
             when (index) {
-                FUZZY_PROP_IDX     -> {
+                FUZZY_PROP_IDX                             -> {
                     if (value.toBoolean() != useFuzzyRecipe) {
                         useFuzzyRecipe = value.toBoolean()
                         dirtyRecipe = true
                         markDirty()
                     }
                 }
-                FLUID_PROP_IDX     -> {
+                FLUID_PROP_IDX                             -> {
                     if (value.toBoolean() != useFluids) {
                         useFluids = value.toBoolean()
                         dirtyRecipe = true
                         markDirty()
                     }
                 }
-                POWER_PROP_IDX     -> logger.warn("trying to set power")
-                POWER_MAX_PROP_IDX -> logger.warn("trying to set maximum power")
-                else               ->
-                    throw IndexOutOfBoundsException()
+                POWER_PROP_IDX                             ->
+                    logger.warn("trying to set power")
+                POWER_MAX_PROP_IDX                         ->
+                    logger.warn("trying to set maximum power")
+                in FIRST_INGR_PROP_IDX..LAST_INGR_PROP_IDX ->
+                    logger.warn("trying to set ingredient feedback")
+                else                                       ->
+                    throw IndexOutOfBoundsException("set: invalidate property delegate index: %d".format(index))
             }
         }
     }
 
     private inner class IngredientFactory : RecipeResolver.IngredientFactory {
 
-        private val fluidIngredientCache = HashMap<Item, ExactIngredient<Fluid>?>()
+        private val fluidIngredientCache = HashMap<Item, FluidIngredient?>()
 
         override fun create(
             ingredients: Iterable<MinecraftIngredient>,
             grid: Iterable<ItemStack>
-        ): Collection<Ingredient<*>> =
+        ): Collection<Ingredient<*, *>> =
             if (useFuzzyRecipe)
                 ingredients
                     .filterNot { it.isEmpty }
@@ -426,13 +468,13 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
                     .groupBy { it }
                     .map { (item, stacks) -> createExact(item, stacks.size.toLong()) }
 
-        private fun createFuzzy(stacks: Array<ItemStack>, amount: Long): Ingredient<Item> =
+        private fun createFuzzy(stacks: Array<ItemStack>, amount: Long): ItemIngredient =
             if (stacks.size == 1)
                 createExact(stacks[0], amount)
             else
                 FuzzyIngredient(stacks.map { createExact(it, 1) }, amount)
 
-        private fun createExact(stack: ItemStack, amount: Long): Ingredient<Item> {
+        private fun createExact(stack: ItemStack, amount: Long): ItemIngredient {
             val item = createExactWithRemainder(stack, amount)
             if (useFluids) {
                 findFluidIngredient(stack)?.let { fluid ->
@@ -442,7 +484,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
             return item
         }
 
-        private fun createExactWithRemainder(stack: ItemStack, amount: Long): Ingredient<Item> {
+        private fun createExactWithRemainder(stack: ItemStack, amount: Long): ItemIngredient {
             val item = ExactIngredient(stack.toVariant(), amount)
             stack.item.recipeRemainder?.let { remainder ->
                 return IngredientWithRemainder(item, remainder)
@@ -453,7 +495,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         private fun findFluidIngredient(stack: ItemStack) =
             fluidIngredientCache.computeIfAbsent(stack.item, this::findFluidIngredientInternal)
 
-        private fun findFluidIngredientInternal(item: Item): ExactIngredient<Fluid>? {
+        private fun findFluidIngredientInternal(item: Item): FluidIngredient? {
             val context = ContainerItemContext.withInitial(ItemStack(item, 1))
             val storage = context.find(FluidStorage.ITEM) ?: return null
             return withOuterTransaction { tx ->

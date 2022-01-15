@@ -4,14 +4,13 @@ package dev.adirelle.adicrafter.crafter.recipe.ingredient
 
 import dev.adirelle.adicrafter.crafter.storage.StorageProvider
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
-import net.minecraft.fluid.Fluid
-import net.minecraft.item.Item
 
 class FluidSubstituteIngredient(
-    private val fluid: ExactIngredient<Fluid>,
-    private val item: Ingredient<Item>
-) : Ingredient<Item> {
+    private val fluid: FluidIngredient,
+    private val item: ItemIngredient
+) : ItemIngredient {
 
+    override val resource by item::resource
     override val amount by item::amount
 
     override fun extractFrom(provider: StorageProvider, maxAmount: Long, tx: TransactionContext): Long {

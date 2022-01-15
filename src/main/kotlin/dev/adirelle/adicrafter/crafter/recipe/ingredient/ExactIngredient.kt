@@ -7,10 +7,10 @@ import dev.adirelle.adicrafter.utils.extensions.toItemString
 import net.fabricmc.fabric.api.transfer.v1.storage.TransferVariant
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 
-class ExactIngredient<T>(
-    val resource: TransferVariant<T>,
+class ExactIngredient<T, V : TransferVariant<T>>(
+    override val resource: V,
     override val amount: Long
-) : Ingredient<T> {
+) : Ingredient<T, V> {
 
     override fun extractFrom(provider: StorageProvider, maxAmount: Long, tx: TransactionContext) =
         provider.getStorage(resource).extract(resource, maxAmount, tx)

@@ -3,6 +3,7 @@
 package dev.adirelle.adicrafter.crafter
 
 import dev.adirelle.adicrafter.AdiCrafter
+import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.FIRST_INGR_PROP_IDX
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.FLUID_PROP_IDX
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.FUZZY_PROP_IDX
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.GRID_FIRST_SLOT
@@ -21,6 +22,7 @@ import dev.adirelle.adicrafter.utils.extensions.toInt
 import dev.adirelle.adicrafter.utils.lazyLogger
 import dev.adirelle.adicrafter.utils.withOuterTransaction
 import io.github.cottonmc.cotton.gui.SyncedGuiDescription
+import io.github.cottonmc.cotton.gui.client.ScreenDrawing
 import io.github.cottonmc.cotton.gui.networking.NetworkSide.CLIENT
 import io.github.cottonmc.cotton.gui.networking.ScreenNetworking
 import io.github.cottonmc.cotton.gui.widget.*
@@ -33,6 +35,7 @@ import net.fabricmc.fabric.api.transfer.v1.item.PlayerInventoryStorage
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage
 import net.fabricmc.fabric.api.transfer.v1.storage.StorageUtil
 import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction
+import net.minecraft.client.util.math.MatrixStack
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.entity.player.PlayerInventory
 import net.minecraft.inventory.Inventory
@@ -41,6 +44,7 @@ import net.minecraft.network.PacketByteBuf
 import net.minecraft.recipe.CraftingRecipe
 import net.minecraft.recipe.ShapedRecipe
 import net.minecraft.recipe.ShapelessRecipe
+import net.minecraft.screen.PropertyDelegate
 import net.minecraft.screen.ScreenHandlerContext
 import net.minecraft.screen.slot.Slot
 import net.minecraft.screen.slot.SlotActionType
@@ -120,7 +124,7 @@ class CrafterScreenHandler(
     init {
         val root = rootPanel as? WGridPanel ?: throw IllegalStateException()
 
-        val gridSlot = WItemSlot.of(blockInventory, GRID_FIRST_SLOT, GRID_WIDTH, GRID_HEIGHT)
+        val gridSlot = WGridSlotButton(blockInventory, propertyDelegate)
         root.add(gridSlot, 0, 1)
 
         val resultSlot = WResultSlot(blockInventory, RESULT_SLOT)
@@ -243,6 +247,28 @@ class CrafterScreenHandler(
                 )
                     .formatted(GRAY),
             )
+        }
+    }
+
+    private class WGridSlotButton(inventory: Inventory, private val props: PropertyDelegate) : WItemSlot(
+        inventory,
+        GRID_FIRST_SLOT,
+        GRID_WIDTH,
+        GRID_HEIGHT,
+        false
+    ) {
+
+        override fun paint(matrices: MatrixStack, x: Int, y: Int, mouseX: Int, mouseY: Int) {
+            super.paint(matrices, x, y, mouseX, mouseY)
+
+            for (sx in 0 until GRID_WIDTH) {
+                for (sy in 0 until GRID_HEIGHT) {
+                    val i = sy * GRID_WIDTH + sx
+                    if (props.get(FIRST_INGR_PROP_IDX + i) > 0) {
+                        ScreenDrawing.coloredRect(matrices, x + sx * 18, y + sy * 18, 18, 18, 0x44FF0000)
+                    }
+                }
+            }
         }
     }
 

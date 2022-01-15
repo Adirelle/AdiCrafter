@@ -11,7 +11,7 @@ import net.minecraft.util.Identifier
 open class Recipe(
     val id: Identifier,
     val output: ItemStack,
-    val ingredients: Collection<Ingredient<*>>,
+    val ingredients: Collection<Ingredient<*, *>>,
 ) {
 
     open val isEmpty: Boolean = false

@@ -11,10 +11,11 @@ import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 import net.minecraft.item.Item
 
 class IngredientWithRemainder(
-    private val consumed: Ingredient<Item>,
+    private val consumed: ItemIngredient,
     val remainder: Item,
-) : Ingredient<Item> {
+) : ItemIngredient {
 
+    override val resource by consumed::resource
     override val amount by consumed::amount
 
     private val remainderVariant = ItemVariant.of(remainder)
