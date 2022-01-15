@@ -13,12 +13,12 @@ import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.INVENTORY_SI
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.OUTPUT_SLOT
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.PROP_COUNT
 import dev.adirelle.adicrafter.crafter.CrafterBlockEntity.Companion.RESULT_SLOT
+import dev.adirelle.adicrafter.utils.extensions.packetSender
 import dev.adirelle.adicrafter.utils.extensions.toInt
 import dev.adirelle.adicrafter.utils.lazyLogger
 import dev.adirelle.adicrafter.utils.withOuterTransaction
 import io.github.cottonmc.cotton.gui.SyncedGuiDescription
 import io.github.cottonmc.cotton.gui.networking.NetworkSide.CLIENT
-import io.github.cottonmc.cotton.gui.networking.NetworkSide.SERVER
 import io.github.cottonmc.cotton.gui.networking.ScreenNetworking
 import io.github.cottonmc.cotton.gui.widget.*
 import io.github.cottonmc.cotton.gui.widget.data.Texture
@@ -75,6 +75,14 @@ class CrafterScreenHandler(
     private val fuzzyToggle = WFuzzyButton()
     private val fluidToggle = WFluidButton()
 
+    private val sendFuzzyMessage =
+        CLIENT.packetSender(this, FUZZY_MSG_ID, PacketByteBuf::writeBoolean, PacketByteBuf::readBoolean)
+        { setProperty(FUZZY_PROP_IDX, it.toInt()) }
+
+    private val sendFluidMessage =
+        CLIENT.packetSender(this, FLUID_MSG_ID, PacketByteBuf::writeBoolean, PacketByteBuf::readBoolean)
+        { setProperty(FLUID_PROP_IDX, it.toInt()) }
+
     // Client-side constructor
     @Environment(EnvType.CLIENT)
     constructor(syncId: Int, playerInventory: PlayerInventory, initialState: PacketByteBuf)
@@ -83,16 +91,12 @@ class CrafterScreenHandler(
         val networking = ScreenNetworking.of(this, CLIENT)
 
         with(fuzzyToggle) {
-            onToggle = Consumer { enabled ->
-                networking.send(FUZZY_MSG_ID) { it.writeBoolean(enabled) }
-            }
+            onToggle = Consumer(sendFuzzyMessage)
             toggle = initialState.readBoolean()
         }
 
         with(fluidToggle) {
-            onToggle = Consumer { enabled ->
-                networking.send(FLUID_MSG_ID) { it.writeBoolean(enabled) }
-            }
+            onToggle = Consumer(sendFluidMessage)
             toggle = initialState.readBoolean()
         }
     }
@@ -118,18 +122,6 @@ class CrafterScreenHandler(
         root.add(createPlayerInventoryPanel(true), 0, 4)
 
         root.validate(this)
-
-        // Server-side init
-        context.run { _, _ ->
-            with(ScreenNetworking.of(this, SERVER)) {
-                receive(FUZZY_MSG_ID) { buf ->
-                    setProperty(FUZZY_PROP_IDX, buf.readBoolean().toInt())
-                }
-                receive(FLUID_MSG_ID) { buf ->
-                    setProperty(FLUID_PROP_IDX, buf.readBoolean().toInt())
-                }
-            }
-        }
     }
 
     private inline fun withBlockEntity(crossinline block: (CrafterBlockEntity) -> Unit) {
