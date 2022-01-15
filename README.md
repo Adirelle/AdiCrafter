@@ -35,6 +35,11 @@ neighboring tanks, like cauldrons.
 This is of limited use with vanilla minecraft, but it can become handy with third-party mods that add a lot of new
 fluids and recipe.
 
+### Download
+
+* [Github Releases](https://github.com/Adirelle/AdiCrafter/releases)
+* [Modrinth](https://modrinth.com/mod/vDM7AFKM)
+
 ### License
 
 Unless explicitly stated otherwise all files in this repository are licensed under the MIT License (MIT).

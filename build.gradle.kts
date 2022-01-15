@@ -23,18 +23,35 @@ base {
 val env = System.getenv()
 
 val minecraftVersion: String by project
-val mavenGroup: String by project
-
-val isSnapshot = env["GITHUB_REF"] != "tag"
+val isSnapshot = env["GITHUB_REF_TYPE"] != "tag"
 val modVersion =
     if (!isSnapshot) env["GITHUB_REF_NAME"]!!
     else "${project.property("modVersion")}-SNAPSHOT"
+val semver: Version = Version.fromString("${modVersion}+mc${minecraftVersion}")
+val baseVersion = with(semver) { "${major}.${minor}.${patch}" }
+val releaseType = with(semver.preReleaseIdentifiers) {
+    when {
+        any { it.toString() == "alpha" } -> VersionType.ALPHA
+        any { it.toString() == "beta" }  -> VersionType.BETA
+        else                             -> VersionType.RELEASE
+    }
+}
+val isPrerelease = !isSnapshot && releaseType != VersionType.RELEASE
 
-val versionInfo = Version.fromString("${modVersion}+mc${minecraftVersion}")
-val baseVersion = with(versionInfo) { "${major}.${minor}.${patch}" }
+version = semver.toString()
+println("Version: %s %s%s".format(version, if (isSnapshot) "snapshot" else "", if (isPrerelease) "prerelease" else ""))
 
-version = versionInfo.toString()
+val mavenGroup: String by project
 group = mavenGroup
+
+changelog {
+    // cf. https://github.com/JetBrains/gradle-changelog-plugin
+    version.set(modVersion)
+    header.set(provider { "[${version.get()}] - ${date()}" })
+    itemPrefix.set("*")
+}
+
+val versionChangelog by lazy { changelog.getOrNull(baseVersion) ?: changelog.getLatest() }
 
 minecraft {}
 
@@ -49,7 +66,7 @@ repositories {
     }
 
     dependencies {
-        minecraft("com.mojang:minecraft:$minecraftVersion")
+        minecraft("com.mojang:minecraft:${minecraftVersion}")
 
         val yarnMappings: String by project
         mappings("net.fabricmc:yarn:$yarnMappings:v2")
@@ -75,6 +92,8 @@ repositories {
 }
 
 loom {
+    // cf. https://github.com/FabricMC/fabric-loom
+
     runs {
         getByName("client").apply {
             property("fabric.log.level", "info")
@@ -83,47 +102,40 @@ loom {
     }
 }
 
-changelog {
-    version.set(modVersion)
-    header.set(provider { "[${version.get()}] - ${date()}" })
-    itemPrefix.set("*")
-}
-
-val versionChangelog = changelog.getOrNull(baseVersion) ?: changelog.getLatest()
-
 task<TaskModrinthUpload>("modrinth") {
-    group = "upload"
+    // cf. https://github.com/modrinth/minotaur
+
+    group = "publishing"
     onlyIf { !isSnapshot && "MODRINTH_TOKEN" in env.keys }
     dependsOn("build")
 
     val modrinthProjectId: String by project
-
     projectId = modrinthProjectId
+
     token = env["MODRINTH_TOKEN"]
     uploadFile = tasks["remapJar"]
     changelog = versionChangelog.toText()
 
     versionNumber = version.toString()
     versionName = modVersion
-    versionType = when {
-        "-alpha" in modVersion -> VersionType.ALPHA
-        "-beta" in modVersion  -> VersionType.BETA
-        else                   -> VersionType.RELEASE
-    }
+    versionType = releaseType
 
     addGameVersion(minecraftVersion)
     addLoader("fabric")
 }
 
 githubRelease {
+    // cf. https://github.com/BreadMoirai/github-release-gradle-plugin
+
     token(env["GITHUB_TOKEN"])
     owner("Adirelle")
     repo("AdiCrafter")
     tagName(modVersion)
     body(versionChangelog.toText())
-    prerelease(versionInfo.preReleaseIdentifiers.isNotEmpty())
+    prerelease(isPrerelease)
     overwrite(true)
-    draft(isSnapshot)
+    targetCommitish(env["GITHUB_SHA"] ?: "1.18.x")
+    releaseAssets(tasks.jar.get().destinationDirectory.asFile.get().listFiles())
 }
 
 tasks {
@@ -142,7 +154,16 @@ tasks {
         targetCompatibility = javaVersion.toString()
     }
 
-    jar { from("LICENSE") { rename { "${it}_${base.archivesName}" } } }
+    get("githubRelease").apply {
+        dependsOn("build")
+        onlyIf { !isSnapshot && "GITHUB_TOKEN" in env.keys }
+    }
+
+    jar {
+        val archivesBaseName: String by project
+        from("LICENSE") { rename { "${it}_${archivesBaseName}" } }
+        from("LICENSE.md") { rename { "${it}_${archivesBaseName}.md" } }
+    }
 
     processResources {
         inputs.property("version", project.version)
