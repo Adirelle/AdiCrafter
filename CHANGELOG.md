@@ -4,10 +4,6 @@
 
 ### Added
 
-* The automated crafter now consumes power from an internal storage that automatically refills steadily. When fully
-  loaded, this allows to craft 10 times in a row.
-* Display which ingredients are missing in the crafting grid.
-
 ### Changed
 
 ### Deprecated
@@ -17,6 +13,14 @@
 ### Fixed
 
 ### Security
+
+## [0.3.0-SNAPSHOT] - 2022-01-16
+
+### Added
+
+* The automated crafter now consumes power from an internal storage that automatically refills steadily. When fully
+  loaded, this allows to craft 10 times in a row.
+* Display which ingredients are missing in the crafting grid.
 
 ## [0.2.0] - 2022-01-15
 
