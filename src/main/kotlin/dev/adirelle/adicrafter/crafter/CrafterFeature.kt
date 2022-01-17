@@ -21,11 +21,14 @@ object CrafterFeature : ModFeature(AdiCrafter, "crafter") {
         group(ItemGroup.REDSTONE)
     }
 
-    @Environment(CLIENT)
-    val SCREEN = register(SCREEN_HANDLER_TYPE, ::CrafterScreen)
-
     override fun onInitialize() {
         super.onInitialize()
         ItemStorage.SIDED.registerForBlockEntity({ blockEntity, _ -> blockEntity.storage }, BLOCK_ENTITY_TYPE)
+    }
+
+    @Environment(CLIENT)
+    override fun onInitializeClient() {
+        super.onInitializeClient()
+        register(SCREEN_HANDLER_TYPE, ::CrafterScreen)
     }
 }

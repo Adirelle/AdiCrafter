@@ -12,6 +12,8 @@
 
 ### Fixed
 
+* Did not work on servers (#1)
+
 ### Security
 
 ## [0.4.0] - 2022-01-17
