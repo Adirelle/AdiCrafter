@@ -4,11 +4,7 @@
 
 ### Added
 
-* A configuration file: adicrafter.json.
-
 ### Changed
-
-* Power usage can be configured or disabled in the configuration file.
 
 ### Deprecated
 
@@ -17,6 +13,16 @@
 ### Fixed
 
 ### Security
+
+## [0.4.0] - 2022-01-17
+
+### Added
+
+* A configuration file: adicrafter.json.
+
+### Changed
+
+* Power usage can be configured or disabled in the configuration file.
 
 ## [0.3.0] - 2022-01-16
 
