@@ -8,7 +8,8 @@ plugins {
     id("fabric-loom")
 
     val kotlinVersion: String by System.getProperties()
-    kotlin("jvm").version(kotlinVersion)
+    kotlin("jvm") version kotlinVersion
+    kotlin("plugin.serialization") version kotlinVersion
 
     id("org.jetbrains.changelog") version "1.3.1"
     id("com.modrinth.minotaur") version "1.2.1"
@@ -70,6 +71,8 @@ repositories {
 
         val yarnMappings: String by project
         mappings("net.fabricmc:yarn:$yarnMappings:v2")
+
+        implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
 
         val loaderVersion: String by project
         modImplementation("net.fabricmc:fabric-loader:$loaderVersion")

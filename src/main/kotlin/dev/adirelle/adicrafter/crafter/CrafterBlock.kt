@@ -30,9 +30,9 @@ class CrafterBlock : BlockWithEntity(
         state: BlockState,
         type: BlockEntityType<T>
     ): BlockEntityTicker<T>? {
-        return (world as? ServerWorld)?.let {
+        return (world as? ServerWorld)?.let { wrld ->
             checkType(type, CrafterFeature.BLOCK_ENTITY_TYPE) { _, _, _, blockEntity ->
-                blockEntity.tick()
+                blockEntity.tick(wrld)
             }
         }
     }
@@ -49,6 +49,7 @@ class CrafterBlock : BlockWithEntity(
     ) {
         if (!state.isOf(newState.block)) {
             getBlockEntity(world, pos)?.dropContent()
+            @Suppress("DEPRECATION")
             super.onStateReplaced(state, world, pos, newState, moved)
         }
     }

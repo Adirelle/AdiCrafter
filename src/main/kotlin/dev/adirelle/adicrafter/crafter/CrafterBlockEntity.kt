@@ -2,8 +2,8 @@
 
 package dev.adirelle.adicrafter.crafter
 
-import dev.adirelle.adicrafter.crafter.power.PowerVariant
-import dev.adirelle.adicrafter.crafter.power.PowerVariant.INSTANCE
+import dev.adirelle.adicrafter.AdiCrafter
+import dev.adirelle.adicrafter.crafter.power.PowerGenerator
 import dev.adirelle.adicrafter.crafter.recipe.Grid
 import dev.adirelle.adicrafter.crafter.recipe.RecipeResolver
 import dev.adirelle.adicrafter.crafter.recipe.ingredient.*
@@ -11,6 +11,7 @@ import dev.adirelle.adicrafter.crafter.storage.NeighborStorageProvider
 import dev.adirelle.adicrafter.crafter.storage.ResourceType
 import dev.adirelle.adicrafter.crafter.storage.SingleStorageProvider
 import dev.adirelle.adicrafter.crafter.storage.StorageCompoundProvider
+import dev.adirelle.adicrafter.utils.Tickable
 import dev.adirelle.adicrafter.utils.extensions.toBoolean
 import dev.adirelle.adicrafter.utils.extensions.toInt
 import dev.adirelle.adicrafter.utils.extensions.toNbt
@@ -27,7 +28,6 @@ import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage
 import net.fabricmc.fabric.api.transfer.v1.storage.StorageView
 import net.fabricmc.fabric.api.transfer.v1.storage.base.SingleSlotStorage
-import net.fabricmc.fabric.api.transfer.v1.storage.base.SingleVariantStorage
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 import net.fabricmc.fabric.api.transfer.v1.transaction.base.SnapshotParticipant
 import net.fabricmc.fabric.api.util.NbtType
@@ -58,7 +58,8 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
     BlockEntity(CrafterFeature.BLOCK_ENTITY_TYPE, pos, state),
     InventoryProvider,
     PropertyDelegateHolder,
-    ExtendedScreenHandlerFactory {
+    ExtendedScreenHandlerFactory,
+    Tickable {
 
     companion object {
 
@@ -66,7 +67,6 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         private const val CONTENT_NBT_KEY = "Content"
         private const val FUZZY_NBT_KEY = "Fuzzy"
         private const val FLUID_NBT_KEY = "Fluid"
-        private const val POWER_NBT_KEY = "Power"
 
         const val GRID_SIZE = Grid.SIZE
         const val GRID_WIDTH = Grid.WIDTH
@@ -105,11 +105,16 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
 
     private var content: ItemStack = ItemStack.EMPTY
 
-    private val powerStorage = PowerStorage(1000L)
-
     private val ingredientFeedback = IntArray(GRID_SIZE) { 0 }
     private var forecast: ItemStack = ItemStack.EMPTY
     private var dirtyForecast = false
+
+    private val powerGenerator = PowerGenerator.fromConfig(AdiCrafter.config.crafter.power).apply {
+        onUpdate = {
+            dirtyForecast = true
+            markDirty()
+        }
+    }
 
     private val openScreenHandlers = ArrayList<ScreenHandler>(2)
 
@@ -123,7 +128,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
                 StorageCompoundProvider.of(
                     NeighborStorageProvider(ResourceType.ITEM, ItemStorage.SIDED, world, pos),
                     NeighborStorageProvider(ResourceType.FLUID, FluidStorage.SIDED, world, pos),
-                    SingleStorageProvider(ResourceType.POWER, powerStorage)
+                    SingleStorageProvider(ResourceType.POWER, powerGenerator)
                 )
             }
             ?: StorageCompoundProvider.of()
@@ -159,7 +164,7 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         content = ItemStack.fromNbt(nbt.getCompound(CONTENT_NBT_KEY))
         useFuzzyRecipe = nbt.getBoolean(FUZZY_NBT_KEY)
         useFluids = nbt.getBoolean(FLUID_NBT_KEY)
-        powerStorage.amount = nbt.getLong(POWER_NBT_KEY)
+        powerGenerator.readFromNbt(nbt)
 
         dirtyRecipe = true
         dirtyForecast = true
@@ -172,12 +177,14 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
         nbt.put(CONTENT_NBT_KEY, content.toNbt())
         nbt.putBoolean(FUZZY_NBT_KEY, useFuzzyRecipe)
         nbt.putBoolean(FLUID_NBT_KEY, useFluids)
-        nbt.putLong(POWER_NBT_KEY, powerStorage.amount)
+        powerGenerator.writeToNbt(nbt)
     }
 
-    fun tick() {
+    override fun tick(world: ServerWorld) {
         val recipeUpdated = updateRecipe()
-        val powerUpdated = updatePower()
+        val powerUpdated = (powerGenerator as? Tickable)
+            ?.let { it.tick(world); true }
+            ?: false
         val forecastUpdated = updateForecast()
         if (recipeUpdated || powerUpdated || forecastUpdated) {
             notifyScreenHandlers()
@@ -271,13 +278,6 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
             logger.info("#{}: {} -> {}", i, grid[i].item.toItemString(), value)
         }
     }
-
-    private fun updatePower() =
-        withOuterTransaction { tx ->
-            val inserted = powerStorage.insert(INSTANCE, 10L, tx)
-            tx.commit()
-            inserted > 0
-        }
 
     private inner class StorageAdapter : SingleSlotStorage<ItemVariant>, SnapshotParticipant<ItemStack>() {
 
@@ -390,17 +390,6 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
             slot == OUTPUT_SLOT && stack.isOf(recipe.output.item)
     }
 
-    private inner class PowerStorage(val innerCapacity: Long) : SingleVariantStorage<PowerVariant>() {
-
-        override fun onFinalCommit() {
-            dirtyForecast = true
-            markDirty()
-        }
-
-        override fun getCapacity(variant: PowerVariant) = innerCapacity
-        override fun getBlankVariant() = INSTANCE
-    }
-
     private inner class PropertyDelegateAdapter : PropertyDelegate {
 
         override fun size() = PROP_COUNT
@@ -412,9 +401,9 @@ class CrafterBlockEntity(pos: BlockPos, state: BlockState) :
                 FLUID_PROP_IDX                             ->
                     useFluids.toInt()
                 POWER_PROP_IDX                             ->
-                    powerStorage.amount.toInt()
+                    powerGenerator.amount.toInt()
                 POWER_MAX_PROP_IDX                         ->
-                    powerStorage.capacity.toInt()
+                    powerGenerator.capacity.toInt()
                 in FIRST_INGR_PROP_IDX..LAST_INGR_PROP_IDX ->
                     ingredientFeedback[index - FIRST_INGR_PROP_IDX]
                 else                                       ->

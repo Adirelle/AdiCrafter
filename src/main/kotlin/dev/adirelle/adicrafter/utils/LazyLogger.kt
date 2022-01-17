@@ -10,7 +10,7 @@ object lazyLogger : PropertyDelegateProvider<Any, Lazy<Logger>> {
     operator fun invoke(name: String): Lazy<Logger> =
         lazy { LogManager.getLogger(name) }
 
-    fun invoke(target: Any): Lazy<Logger> =
+    operator fun invoke(target: Any): Lazy<Logger> =
         lazy { LogManager.getLogger(target) }
 
     override fun provideDelegate(thisRef: Any, property: KProperty<*>): Lazy<Logger> =

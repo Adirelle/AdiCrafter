@@ -139,10 +139,12 @@ class CrafterScreenHandler(
         root.add(fuzzyToggle, 7, 0)
         root.add(fluidToggle, 8, 0)
 
-        val powerBar = WBar(POWER_BAR_BACKGROUND, POWER_BAR_FOREGROUND, POWER_PROP_IDX, POWER_MAX_PROP_IDX, RIGHT)
-        root.add(powerBar, 4, 4)
-        powerBar.setLocation(root.insets.left + 18 * 4, root.insets.top + 18 * 4 - 5)
-        powerBar.setSize(18 * 4, 5)
+        if (AdiCrafter.config.crafter.power.enabled) {
+            val powerBar = WBar(POWER_BAR_BACKGROUND, POWER_BAR_FOREGROUND, POWER_PROP_IDX, POWER_MAX_PROP_IDX, RIGHT)
+            root.add(powerBar, 4, 4)
+            powerBar.setLocation(root.insets.left + 18 * 4, root.insets.top + 18 * 4 - 5)
+            powerBar.setSize(18 * 4, 5)
+        }
 
         root.add(createPlayerInventoryPanel(true), 0, 4)
 

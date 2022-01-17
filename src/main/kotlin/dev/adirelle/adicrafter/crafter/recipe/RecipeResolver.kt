@@ -2,6 +2,8 @@
 
 package dev.adirelle.adicrafter.crafter.recipe
 
+import dev.adirelle.adicrafter.AdiCrafter
+import dev.adirelle.adicrafter.crafter.CrafterConfig.PowerConfig
 import dev.adirelle.adicrafter.crafter.Recipe
 import dev.adirelle.adicrafter.crafter.power.PowerVariant
 import dev.adirelle.adicrafter.crafter.recipe.ingredient.ExactIngredient
@@ -19,14 +21,16 @@ import net.minecraft.world.World
 import net.minecraft.recipe.Ingredient as MinecraftIngredient
 
 class RecipeResolver private constructor(
-    private val world: World
+    private val world: World,
+    private val config: PowerConfig
 ) {
 
     private val logger by lazyLogger
 
     companion object {
 
-        private val instances = memoize(::RecipeResolver)
+        private val instances =
+            memoize<World, RecipeResolver> { world -> RecipeResolver(world, AdiCrafter.config.crafter.power) }
 
         fun of(world: World) = instances[world]
 
@@ -62,7 +66,9 @@ class RecipeResolver private constructor(
                     grid.filterNot { it.isEmpty }
                 )
             )
-            add(ExactIngredient(PowerVariant.INSTANCE, 100))
+            if (config.enabled) {
+                add(ExactIngredient(PowerVariant.INSTANCE, config.cost))
+            }
         }
 
     fun interface IngredientFactory {
