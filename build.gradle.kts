@@ -1,4 +1,3 @@
-import com.github.gundy.semver4j.model.Version
 import com.modrinth.minotaur.TaskModrinthUpload
 import com.modrinth.minotaur.request.VersionType
 import org.jetbrains.changelog.date
@@ -13,7 +12,6 @@ plugins {
 
     id("org.jetbrains.changelog") version "1.3.1"
     id("com.modrinth.minotaur") version "1.2.1"
-    id("com.github.breadmoirai.github-release") version "2.2.12"
 }
 
 base {
@@ -22,32 +20,17 @@ base {
 }
 
 val env = System.getenv()
-
 val minecraftVersion: String by project
-val isSnapshot = env["GITHUB_REF_TYPE"] != "tag"
-val modVersion =
-    if (!isSnapshot) env["GITHUB_REF_NAME"]!!
-    else "${project.property("modVersion")}-SNAPSHOT"
-val semver: Version = Version.fromString("${modVersion}+mc${minecraftVersion}")
-val baseVersion = with(semver) { "${major}.${minor}.${patch}" }
-val releaseType = with(semver.preReleaseIdentifiers) {
-    when {
-        any { it.toString() == "alpha" } -> VersionType.ALPHA
-        any { it.toString() == "beta" }  -> VersionType.BETA
-        else                             -> VersionType.RELEASE
-    }
-}
-val isPrerelease = !isSnapshot && releaseType != VersionType.RELEASE
 
-version = semver.toString()
-println("Version: %s %s%s".format(version, if (isSnapshot) "snapshot" else "", if (isPrerelease) "prerelease" else ""))
+val baseVersion = env["MOD_VERSION"] ?: "unreleased"
+version = "$baseVersion+mc$minecraftVersion"
 
 val mavenGroup: String by project
 group = mavenGroup
 
 changelog {
     // cf. https://github.com/JetBrains/gradle-changelog-plugin
-    version.set(modVersion)
+    version.set(baseVersion)
     header.set(provider { "[${version.get()}] - ${date()}" })
     itemPrefix.set("*")
 }
@@ -109,7 +92,7 @@ task<TaskModrinthUpload>("modrinth") {
     // cf. https://github.com/modrinth/minotaur
 
     group = "publishing"
-    onlyIf { !isSnapshot && "MODRINTH_TOKEN" in env.keys }
+    onlyIf { "MODRINTH_TOKEN" in env.keys }
     dependsOn("build")
 
     val modrinthProjectId: String by project
@@ -120,25 +103,19 @@ task<TaskModrinthUpload>("modrinth") {
     changelog = versionChangelog.toText()
 
     versionNumber = version.toString()
-    versionName = modVersion
+    versionName = baseVersion
+
+    val releaseType by lazy {
+        when {
+            "-alpha" in baseVersion -> VersionType.ALPHA
+            "-beta" in baseVersion  -> VersionType.BETA
+            else                    -> VersionType.RELEASE
+        }
+    }
     versionType = releaseType
 
     addGameVersion(minecraftVersion)
     addLoader("fabric")
-}
-
-githubRelease {
-    // cf. https://github.com/BreadMoirai/github-release-gradle-plugin
-
-    token(env["GITHUB_TOKEN"])
-    owner("Adirelle")
-    repo("AdiCrafter")
-    tagName(modVersion)
-    body(versionChangelog.toText())
-    prerelease(isPrerelease)
-    overwrite(true)
-    targetCommitish(env["GITHUB_SHA"] ?: "1.18.x")
-    releaseAssets(tasks.jar.get().destinationDirectory.asFile.get().listFiles())
 }
 
 tasks {
@@ -155,11 +132,6 @@ tasks {
         kotlinOptions { jvmTarget = javaVersion.toString() }
         sourceCompatibility = javaVersion.toString()
         targetCompatibility = javaVersion.toString()
-    }
-
-    get("githubRelease").apply {
-        dependsOn("build")
-        onlyIf { !isSnapshot && "GITHUB_TOKEN" in env.keys }
     }
 
     jar {
