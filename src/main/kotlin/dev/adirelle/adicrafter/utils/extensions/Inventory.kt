@@ -1,11 +1,11 @@
 package dev.adirelle.adicrafter.utils.extensions
 
-import dev.adirelle.adicrafter.utils.expectExactSize
+import dev.adirelle.adicrafter.utils.requireExactSize
 import net.minecraft.inventory.Inventory
 import net.minecraft.item.ItemStack
 
 fun Inventory.copyFrom(list: List<ItemStack>) {
-    expectExactSize(list, size()).forEachIndexed { index, stack ->
+    requireExactSize(list, size()).forEachIndexed { index, stack ->
         this[index] = stack
     }
 }

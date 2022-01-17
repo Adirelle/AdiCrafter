@@ -2,16 +2,17 @@ package dev.adirelle.adicrafter.utils
 
 import com.google.common.base.Strings
 
-fun <T : List<*>> expectExactSize(list: T, size: Int, desc: String = "list"): T {
-    if (size != list.size) {
-        throw IndexOutOfBoundsException(
-            Strings.lenientFormat(
-                "expected a %s of exactly %s item(s), not %s",
-                desc,
-                size,
-                list.size
-            )
+inline fun <T> validated(value: T, isValid: Boolean, message: () -> String): T {
+    require(isValid, message)
+    return value
+}
+
+fun <T : List<*>> requireExactSize(list: T, size: Int, desc: String = "list"): T =
+    validated(list, size == list.size) {
+        Strings.lenientFormat(
+            "expected a %s of exactly %s item(s) but got a list of %s items",
+            desc,
+            size,
+            list.size
         )
     }
-    return list
-}
