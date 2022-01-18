@@ -11,3 +11,4 @@ fun ItemStack.toVariant(): ItemVariant =
 
 fun ItemStack.toNbt() =
     NbtCompound().also { writeNbt(it) }
+

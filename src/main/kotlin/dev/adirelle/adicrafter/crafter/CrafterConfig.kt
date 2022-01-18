@@ -15,6 +15,3 @@ data class CrafterConfig(
         var reloadRate: Long = 10L
     )
 }
-
-
-

@@ -16,14 +16,18 @@ import net.minecraft.util.hit.BlockHitResult
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 
-class CrafterBlock : BlockWithEntity(
+open class CrafterBlock(
+    private val blockEntityFactory: (pos: BlockPos, state: BlockState) -> CrafterBlockEntity
+) : BlockWithEntity(
     FabricBlockSettings
         .of(Material.METAL)
         .strength(4.0f)
 ) {
 
+    fun getType() = CrafterFeature.BLOCK_ENTITY_TYPE
+
     override fun createBlockEntity(pos: BlockPos, state: BlockState): BlockEntity =
-        CrafterBlockEntity(pos, state)
+        blockEntityFactory(pos, state)
 
     override fun <T : BlockEntity> getTicker(
         world: World,
@@ -31,14 +35,11 @@ class CrafterBlock : BlockWithEntity(
         type: BlockEntityType<T>
     ): BlockEntityTicker<T>? {
         return (world as? ServerWorld)?.let { wrld ->
-            checkType(type, CrafterFeature.BLOCK_ENTITY_TYPE) { _, _, _, blockEntity ->
+            checkType(type, getType()) { _, _, _, blockEntity ->
                 blockEntity.tick(wrld)
             }
         }
     }
-
-    private fun getBlockEntity(world: World, pos: BlockPos): CrafterBlockEntity? =
-        (world as? ServerWorld)?.let { (world.getBlockEntity(pos) as? CrafterBlockEntity) }
 
     override fun onStateReplaced(
         state: BlockState,
@@ -47,11 +48,12 @@ class CrafterBlock : BlockWithEntity(
         newState: BlockState,
         moved: Boolean
     ) {
-        if (!state.isOf(newState.block)) {
-            getBlockEntity(world, pos)?.dropContent()
-            @Suppress("DEPRECATION")
-            super.onStateReplaced(state, world, pos, newState, moved)
+        if (!state.isOf(newState.block) && !world.isClient) {
+            (world.getBlockEntity(pos) as? CrafterBlockEntity)
+                ?.dropContent()
         }
+        @Suppress("DEPRECATION")
+        super.onStateReplaced(state, world, pos, newState, moved)
     }
 
     override fun onUse(
