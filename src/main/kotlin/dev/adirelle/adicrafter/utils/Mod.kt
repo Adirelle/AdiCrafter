@@ -78,7 +78,10 @@ open class ModFeature(mod: Mod, val NAME: String) : SidedModInitalizer {
     final override val LOGGER by lazyLogger("${mod.MOD_ID}:${NAME}")
 
     val MOD_ID = mod.MOD_ID
-    val ID = Identifier(MOD_ID, NAME)
+
+    fun id(name: String) = Identifier(MOD_ID, name)
+
+    val ID = id(NAME)
 
     init {
         LOGGER.debug("initializing feature ${ID}")
@@ -94,16 +97,23 @@ open class ModFeature(mod: Mod, val NAME: String) : SidedModInitalizer {
         block: T,
         crossinline settings: FabricItemSettings.() -> FabricItemSettings
     ) =
-        register(BlockItem(block, FabricItemSettings().settings()))
+        registerItemFor(block, ID, settings)
 
-    fun <T : Block> registerItemFor(block: T) =
-        register(BlockItem(block, FabricItemSettings()))
+    inline fun <T : Block> registerItemFor(
+        block: T,
+        id: Identifier,
+        crossinline settings: FabricItemSettings.() -> FabricItemSettings
+    ) =
+        register(BlockItem(block, FabricItemSettings().settings()), id)
+
+    fun <T : Block> registerItemFor(block: T, id: Identifier = ID) =
+        register(BlockItem(block, FabricItemSettings()), id)
 
     fun <T : BlockEntity, S : T> register(
         factory: (BlockPos, BlockState) -> T,
-        vararg blocks: Block,
         id: Identifier = ID,
-        type: Type<S>? = null
+        type: Type<S>? = null,
+        vararg blocks: Block,
     ): BlockEntityType<T> =
         BlockEntityType(factory, setOf(*blocks), type)
             .also { Registry.BLOCK_ENTITY_TYPE.register(id, it) }

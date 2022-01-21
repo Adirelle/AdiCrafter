@@ -1,6 +1,9 @@
 {
     "block.adicrafter.crafter": "Automated crafter",
+    "block.adicrafter.fueled_crafter": "Fueled automated crafter",
     "item.adicrafter.crafter": "Automated crafter",
+    "item.adicrafter.fueled_crafter": "Fueled automated crafter",
+    "gui.adicrafter.powerBar.tooltip.title": "Power: %s/%s",
     "gui.adicrafter.fuzzy.tooltip.title": "Fuzzy recipe?",
     "gui.adicrafter.fuzzy.tooltip.enabled": "Enabled",
     "gui.adicrafter.fuzzy.tooltip.disabled": "Disabled",

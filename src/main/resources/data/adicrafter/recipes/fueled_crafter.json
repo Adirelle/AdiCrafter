@@ -1,0 +1,14 @@
+{
+    "type": "minecraft:crafting_shapeless",
+    "ingredients": [
+        {
+            "item": "adicrafter:crafter"
+        },
+        {
+            "item": "minecraft:furnace"
+        }
+    ],
+    "result": {
+        "item": "adicrafter:fueled_crafter"
+    }
+}
