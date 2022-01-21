@@ -9,6 +9,7 @@ import dev.adirelle.adicrafter.crafter.api.recipe.RecipeFlags
 import dev.adirelle.adicrafter.crafter.api.storage.ResourceType
 import dev.adirelle.adicrafter.crafter.api.storage.SingleTypeStorageProvider
 import dev.adirelle.adicrafter.crafter.api.storage.StorageProvider
+import dev.adirelle.adicrafter.crafter.impl.power.FuelPowerGenerator
 import dev.adirelle.adicrafter.crafter.impl.power.IllimitedPowerGenerator
 import dev.adirelle.adicrafter.crafter.impl.power.SteadyPowerGenerator
 import dev.adirelle.adicrafter.crafter.impl.recipe.FactoryImpl
@@ -27,23 +28,21 @@ import net.minecraft.util.Identifier
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 
+@Suppress("MemberVisibilityCanBePrivate")
 object CrafterFeature : ModFeature(AdiCrafter, "crafter") {
 
     private val config by lazy { AdiCrafter.config.crafter }
 
-    val BLOCK = CrafterBlock(::createCrafterBlockEntity)
+    val BASIC_BLOCK = CrafterBlock(::createBasicCrafterBlockEntity)
+    val FUELED_BLOCK = CrafterBlock(::createFueledCrafterBlockEntity)
 
-    val BLOCK_ENTITY_TYPE = r(ID, BLOCK, ::createCrafterBlockEntity)
+    val BASIC_BLOCK_ENTITY_TYPE: BlockEntityType<CrafterBlockEntity> =
+        r(ID, BASIC_BLOCK, ::createBasicCrafterBlockEntity)
+
+    val FUELED_BLOCK_ENTITY_TYPE: BlockEntityType<CrafterBlockEntity> =
+        r(id("fueled_crafter"), FUELED_BLOCK, ::createFueledCrafterBlockEntity)
 
     val SCREEN_HANDLER_TYPE = registerExtended(::CrafterScreenHandler)
-
-    override fun onInitialize() {
-        ItemStorage.SIDED.registerForBlockEntity(
-            { blockEntity, _ -> blockEntity.dataAccessor.crafter },
-            BLOCK_ENTITY_TYPE
-        )
-        LOGGER.info("initializer with {}")
-    }
 
     @Environment(CLIENT)
     override fun onInitializeClient() {
@@ -51,27 +50,45 @@ object CrafterFeature : ModFeature(AdiCrafter, "crafter") {
         register(SCREEN_HANDLER_TYPE, ::CrafterScreen)
     }
 
-    private fun <B : CrafterBlock, T : CrafterBlockEntity> r(
+    private fun r(
         id: Identifier,
-        block: B,
-        blockEntityFactory: (pos: BlockPos, state: BlockState) -> T
-    ): BlockEntityType<T> {
+        block: CrafterBlock,
+        blockEntityFactory: (pos: BlockPos, state: BlockState) -> CrafterBlockEntity
+    ): BlockEntityType<CrafterBlockEntity> {
         register(block, id)
         registerItemFor(block, id) { group(ItemGroup.REDSTONE) }
-        return register(blockEntityFactory, id, null, block)
-    }
-
-    private fun createCrafterBlockEntity(pos: BlockPos, state: BlockState): CrafterBlockEntity {
-        val powerGenerator = createPowerGenerator()
-        return CrafterBlockEntity(pos, state, powerGenerator, ::createRecipeFactory) { world, _ ->
-            createStorageProvider(world, pos, powerGenerator)
+        return register(blockEntityFactory, id, null, block).also {
+            ItemStorage.SIDED.registerForBlockEntity({ blockEntity, _ -> blockEntity.dataAccessor.crafter }, it)
         }
     }
 
-    private fun createPowerGenerator() =
+    private fun createBasicCrafterBlockEntity(pos: BlockPos, state: BlockState) =
+        createCrafterBlockEntity(BASIC_BLOCK_ENTITY_TYPE, pos, state, createBasicPowerGenerator())
+
+    private fun createBasicPowerGenerator() =
         with(config.power) {
             if (enabled) SteadyPowerGenerator(capacity, reloadRate)
             else IllimitedPowerGenerator
+        }
+
+    private fun createFueledCrafterBlockEntity(pos: BlockPos, state: BlockState) =
+        with(config.power) {
+            createCrafterBlockEntity(
+                FUELED_BLOCK_ENTITY_TYPE,
+                pos,
+                state,
+                FuelPowerGenerator(capacity * 2, reloadRate * 2)
+            )
+        }
+
+    private fun createCrafterBlockEntity(
+        blockEntityType: BlockEntityType<CrafterBlockEntity>,
+        pos: BlockPos,
+        state: BlockState,
+        powerGenerator: PowerGenerator
+    ) =
+        CrafterBlockEntity(blockEntityType, pos, state, powerGenerator, ::createRecipeFactory) { world, _ ->
+            createStorageProvider(world, pos, powerGenerator)
         }
 
     private fun createRecipeFactory(flags: RecipeFlags): Recipe.Factory {

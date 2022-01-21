@@ -16,7 +16,9 @@ import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage
 import net.fabricmc.fabric.api.util.NbtType
 import net.minecraft.block.BlockState
+import net.minecraft.block.InventoryProvider
 import net.minecraft.block.entity.BlockEntity
+import net.minecraft.block.entity.BlockEntityType
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.entity.player.PlayerInventory
 import net.minecraft.inventory.Inventory
@@ -33,13 +35,14 @@ import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 
 open class CrafterBlockEntity(
+    blockEntityType: BlockEntityType<CrafterBlockEntity>,
     pos: BlockPos,
     state: BlockState,
     private val powerGenerator: PowerGenerator,
     private val recipeFactoryProvider: (RecipeFlags) -> Recipe.Factory,
     private val storageProviderProvider: (World?, BlockPos) -> StorageProvider
 ) :
-    BlockEntity(CrafterFeature.BLOCK_ENTITY_TYPE, pos, state),
+    BlockEntity(blockEntityType, pos, state),
     ExtendedScreenHandlerFactory,
     Tickable {
 
@@ -116,7 +119,8 @@ open class CrafterBlockEntity(
     }
 
     override fun writeScreenOpeningData(player: ServerPlayerEntity, buf: PacketByteBuf) {
-        buf.writeBoolean(powerGenerator.isActive())
+        buf.writeBoolean(powerGenerator.hasPowerBar())
+        buf.writeBoolean(powerGenerator is InventoryProvider)
         recipeFlags.writeToPacket(buf)
     }
 
@@ -232,6 +236,12 @@ open class CrafterBlockEntity(
                     resource.toStack(amount.toInt())
                 }
             }
+
+        override val generator: Inventory? =
+            (powerGenerator as? InventoryProvider)?.getInventory(null, null, null)
+
+        override val hasPowerBar: Boolean =
+            powerGenerator.hasPowerBar()
 
         override val recipeFlags: Property =
             property(

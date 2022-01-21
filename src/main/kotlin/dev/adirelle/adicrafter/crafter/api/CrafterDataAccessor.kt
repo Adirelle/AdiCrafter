@@ -1,3 +1,5 @@
+@file:Suppress("UnstableApiUsage")
+
 package dev.adirelle.adicrafter.crafter.api
 
 import dev.adirelle.adicrafter.crafter.impl.Grid
@@ -14,34 +16,38 @@ interface CrafterDataAccessor {
     val grid: Inventory
     val forecast: Inventory
     val result: Inventory
+    val generator: Inventory?
 
     @Suppress("UnstableApiUsage")
     val crafter: Storage<ItemVariant>
 
     val recipeFlags: Property
     val missingIngredients: Property
+
+    val hasPowerBar: Boolean
     val powerAmount: Property
     val powerCapacity: Property
 
     fun onScreenHandlerClosed(handler: ScreenHandler)
 
-    companion object {
+    class Dummy(
+        override val hasPowerBar: Boolean,
+        hasGeneratorInventory: Boolean
+    ) : CrafterDataAccessor {
 
-        fun empty(): CrafterDataAccessor =
-            object : CrafterDataAccessor {
-                override val grid = SimpleInventory(Grid.SIZE)
-                override var forecast = SimpleInventory(1)
-                override val result = SimpleInventory(1)
+        override val grid = SimpleInventory(Grid.SIZE)
+        override var forecast = SimpleInventory(1)
+        override val result = SimpleInventory(1)
+        override val generator = if (hasGeneratorInventory) SimpleInventory(1) else null
 
-                @Suppress("UnstableApiUsage")
-                override val crafter = NullStorage(ItemVariant.blank())
+        override val crafter = NullStorage(ItemVariant.blank())
 
-                override var recipeFlags = Property.create()
-                override val missingIngredients = Property.create()
-                override val powerAmount = Property.create()
-                override val powerCapacity = Property.create()
+        override var recipeFlags: Property = Property.create()
+        override val missingIngredients: Property = Property.create()
 
-                override fun onScreenHandlerClosed(handler: ScreenHandler) {}
-            }
+        override val powerAmount: Property = Property.create()
+        override val powerCapacity: Property = Property.create()
+
+        override fun onScreenHandlerClosed(handler: ScreenHandler) {}
     }
 }

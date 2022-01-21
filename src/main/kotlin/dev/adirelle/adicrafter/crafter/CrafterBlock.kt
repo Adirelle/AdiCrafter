@@ -24,8 +24,6 @@ open class CrafterBlock(
         .strength(4.0f)
 ) {
 
-    fun getType() = CrafterFeature.BLOCK_ENTITY_TYPE
-
     override fun createBlockEntity(pos: BlockPos, state: BlockState): BlockEntity =
         blockEntityFactory(pos, state)
 
@@ -33,13 +31,18 @@ open class CrafterBlock(
         world: World,
         state: BlockState,
         type: BlockEntityType<T>
-    ): BlockEntityTicker<T>? {
-        return (world as? ServerWorld)?.let { wrld ->
-            checkType(type, getType()) { _, _, _, blockEntity ->
-                blockEntity.tick(wrld)
+    ): BlockEntityTicker<T>? =
+        (world as? ServerWorld)?.let { wrld ->
+            when (type) {
+                CrafterFeature.BASIC_BLOCK_ENTITY_TYPE,
+                CrafterFeature.FUELED_BLOCK_ENTITY_TYPE ->
+                    BlockEntityTicker { _, _, _, be ->
+                        (be as? CrafterBlockEntity)?.tick(wrld)
+                    }
+                else                                    ->
+                    null
             }
         }
-    }
 
     override fun onStateReplaced(
         state: BlockState,

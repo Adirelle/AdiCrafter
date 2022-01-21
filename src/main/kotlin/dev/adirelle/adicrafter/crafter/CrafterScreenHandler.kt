@@ -48,7 +48,6 @@ class CrafterScreenHandler
 private constructor(
     syncId: Int,
     playerInventory: PlayerInventory,
-    showPower: Boolean,
     private val dataAccessor: CrafterDataAccessorAdapter
 ) :
     SyncedGuiDescription(
@@ -93,12 +92,7 @@ private constructor(
 
     // Server-side constructor
     constructor(syncId: Int, playerInventory: PlayerInventory, dataAccessor: CrafterDataAccessor) :
-        this(
-            syncId,
-            playerInventory,
-            dataAccessor.powerAmount.get() > 0,
-            CrafterDataAccessorAdapter(dataAccessor)
-        )
+        this(syncId, playerInventory, CrafterDataAccessorAdapter(dataAccessor))
 
     // Client-side constructor
     @Environment(EnvType.CLIENT)
@@ -106,8 +100,12 @@ private constructor(
         this(
             syncId,
             playerInventory,
-            initialState.readBoolean(),
-            CrafterDataAccessorAdapter(CrafterDataAccessor.empty())
+            CrafterDataAccessorAdapter(
+                CrafterDataAccessor.Dummy(
+                    initialState.readBoolean(),
+                    initialState.readBoolean()
+                )
+            )
         ) {
 
         recipeFlags = RecipeFlags.fromPacket(initialState)
@@ -128,6 +126,9 @@ private constructor(
     init {
         val root = rootPanel as? WGridPanel ?: throw IllegalStateException()
 
+        root.add(fuzzyToggle, 7, 0)
+        root.add(fluidToggle, 8, 0)
+
         val gridSlot = WGridSlotButton(dataAccessor.grid, Grid.WIDTH, Grid.HEIGHT, dataAccessor.missingIngredients)
         root.add(gridSlot, 0, 1)
 
@@ -140,20 +141,22 @@ private constructor(
         outputSlot.isInsertingAllowed = false
         root.add(outputSlot, 7, 2)
 
-        root.add(fuzzyToggle, 7, 0)
-        root.add(fluidToggle, 8, 0)
-
-        if (showPower) {
+        if (dataAccessor.hasPowerBar) {
             val powerBar = WBar(
                 POWER_BAR_BACKGROUND,
                 POWER_BAR_FOREGROUND,
                 CrafterDataAccessorAdapter.POWER_AMOUNT_PROP,
                 CrafterDataAccessorAdapter.POWER_CAPACITY_PROP,
                 WBar.Direction.RIGHT
-            )
-            root.add(powerBar, 4, 4)
+            ).withTooltip("gui.adicrafter.powerBar.tooltip.title")
+            root.add(powerBar, 5, 4)
             powerBar.setLocation(root.insets.left + 18 * 4, root.insets.top + 18 * 4 - 5)
-            powerBar.setSize(18 * 4, 5)
+            powerBar.setSize(18 * 3, 5)
+        }
+
+        if (dataAccessor.generator != null) {
+            val generatorSlot = WItemSlot.of(dataAccessor.generator, 0)
+            root.add(generatorSlot, 5, 0)
         }
 
         root.add(createPlayerInventoryPanel(true), 0, 4)

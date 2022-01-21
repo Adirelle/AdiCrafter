@@ -4,6 +4,8 @@
 
 ### Added
 
+* A fueled automated crafter, that consumes solid fuel to reload its internal power.
+
 ### Changed
 
 ### Deprecated

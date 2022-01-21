@@ -78,7 +78,10 @@ open class ModFeature(mod: Mod, val NAME: String) : SidedModInitalizer {
     final override val LOGGER by lazyLogger("${mod.MOD_ID}:${NAME}")
 
     val MOD_ID = mod.MOD_ID
-    val ID = Identifier(MOD_ID, NAME)
+
+    fun id(name: String) = Identifier(MOD_ID, name)
+
+    val ID = id(NAME)
 
     init {
         LOGGER.debug("initializing feature ${ID}")

@@ -13,4 +13,6 @@ interface PowerGenerator : SingleViewStorage<PowerVariant> {
     fun isActive(): Boolean = true
     fun tick(world: World): Boolean = false
     fun setUpdateCallback(callback: () -> Unit) {}
+    
+    fun hasPowerBar(): Boolean
 }

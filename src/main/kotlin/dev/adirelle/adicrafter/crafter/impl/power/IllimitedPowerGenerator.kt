@@ -11,6 +11,7 @@ object IllimitedPowerGenerator : PowerGenerator {
 
     override fun extract(resource: PowerVariant, maxAmount: Long, transaction: TransactionContext) = maxAmount
 
+    override fun hasPowerBar() = false
     override fun isResourceBlank() = false
     override fun getResource() = INSTANCE
     override fun getAmount() = Long.MAX_VALUE
