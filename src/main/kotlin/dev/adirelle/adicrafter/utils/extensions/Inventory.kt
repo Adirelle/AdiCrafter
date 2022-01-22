@@ -1,7 +1,13 @@
+@file:Suppress("UnstableApiUsage")
+
 package dev.adirelle.adicrafter.utils.extensions
 
 import dev.adirelle.adicrafter.crafter.impl.Grid
+import dev.adirelle.adicrafter.utils.memoize
 import dev.adirelle.adicrafter.utils.requireExactSize
+import net.fabricmc.fabric.api.transfer.v1.item.InventoryStorage
+import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
+import net.fabricmc.fabric.api.transfer.v1.storage.base.SingleSlotStorage
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.inventory.Inventory
 import net.minecraft.item.ItemStack
@@ -26,12 +32,22 @@ operator fun Inventory.get(index: Int): ItemStack =
 operator fun Inventory.set(index: Int, stack: ItemStack) =
     setStack(index, stack)
 
+private val storageMemoizer = memoize<Inventory, InventoryStorage> { inventory ->
+    InventoryStorage.of(inventory, null)
+}
+
+fun Inventory.asStorage(): InventoryStorage =
+    storageMemoizer(this)
+
 class InventoryIterator(private val inventory: Inventory) : Iterator<ItemStack> {
 
     private var idx = 0
     override fun hasNext() = idx < inventory.size()
     override fun next(): ItemStack = inventory.getStack(idx++)
 }
+
+operator fun InventoryStorage.get(slot: Int): SingleSlotStorage<ItemVariant> =
+    slots[slot]
 
 private val propertyInventoryInstances =
     Collections.synchronizedMap(WeakHashMap<KProperty<ItemStack>, Inventory>())

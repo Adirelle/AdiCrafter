@@ -34,7 +34,7 @@ class FactoryImpl(
 
     companion object {
 
-        private val powerCost: Long by lazy { AdiCrafter.config.crafter.power.cost }
+        private val powerCost: Long by lazy { AdiCrafter.config.crafter.craftPowerCost }
 
         private val instances = Collections.synchronizedMap(HashMap<RecipeFlags, Recipe.Factory>())
 

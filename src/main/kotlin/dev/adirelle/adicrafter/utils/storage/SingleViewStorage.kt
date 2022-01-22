@@ -2,6 +2,7 @@
 
 package dev.adirelle.adicrafter.utils.storage
 
+import net.fabricmc.fabric.api.transfer.v1.storage.Storage
 import net.fabricmc.fabric.api.transfer.v1.storage.StorageView
 import net.fabricmc.fabric.api.transfer.v1.storage.TransferVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.base.ExtractionOnlyStorage
@@ -12,4 +13,10 @@ interface SingleViewStorage<T : TransferVariant<*>> : SingleSlotStorage<T>, Extr
 
     override fun exactView(transaction: TransactionContext, resource: T): StorageView<T>? =
         this.takeIf { this.resource == resource }
+
+    companion object {
+
+        fun <T : TransferVariant<*>> of(view: StorageView<T>): Storage<T> =
+            object : StorageView<T> by view, SingleViewStorage<T> {}
+    }
 }

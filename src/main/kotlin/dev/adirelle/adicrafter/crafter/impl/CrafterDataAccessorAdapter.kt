@@ -17,8 +17,8 @@ class CrafterDataAccessorAdapter(
         const val GRID_LAST_SLOT = GRID_FIRST_SLOT + Grid.SIZE - 1
         const val FORECAST_SLOT = GRID_LAST_SLOT + 1
         const val RESULT_SLOT = FORECAST_SLOT + 1
-        const val GENERATOR_SLOT = RESULT_SLOT + 1
-        const val INVENTORY_SIZE = GENERATOR_SLOT + 1
+        const val FUEL_SLOT = RESULT_SLOT + 1
+        const val INVENTORY_SIZE = FUEL_SLOT + 1
 
         const val RECIPE_FLAGS_PROP = 0
         const val MISSING_PROP = 1
@@ -86,8 +86,8 @@ class CrafterDataAccessorAdapter(
                 in GRID_FIRST_SLOT..GRID_LAST_SLOT -> grid.block(index - GRID_FIRST_SLOT)
                 FORECAST_SLOT                      -> forecast.block(0)
                 RESULT_SLOT                        -> result.block(0)
-                GENERATOR_SLOT                     -> generator?.block(0) ?: default
-                else                               -> throw IndexOutOfBoundsException()
+                FUEL_SLOT                          -> fuel?.block(0) ?: default
+                else                               -> default
             }
 
         private inline fun withInventory(index: Int, block: Inventory.(Int) -> Unit) {
@@ -97,7 +97,7 @@ class CrafterDataAccessorAdapter(
         override fun getStack(slot: Int): ItemStack =
             withInventory(slot, ItemStack.EMPTY) { getStack(it) }
 
-        override fun removeStack(slot: Int, amount: Int) =
+        override fun removeStack(slot: Int, amount: Int): ItemStack =
             withInventory(slot, ItemStack.EMPTY) { removeStack(it, amount) }
 
         override fun removeStack(slot: Int): ItemStack =

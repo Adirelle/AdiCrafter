@@ -19,8 +19,8 @@ class REIPlugin : REIClientPlugin {
         registry.addWorkstations(
             BuiltinPlugin.CRAFTING,
             EntryIngredient.of(
-                EntryStacks.of(CrafterFeature.BASIC_BLOCK),
-                EntryStacks.of(CrafterFeature.FUELED_BLOCK)
+                EntryStacks.of(CrafterFeature.BASIC_CRAFTER),
+                EntryStacks.of(CrafterFeature.FUELED_CRAFTER)
             )
         )
     }

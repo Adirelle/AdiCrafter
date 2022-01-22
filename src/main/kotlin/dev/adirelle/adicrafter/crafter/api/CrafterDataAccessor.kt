@@ -16,7 +16,7 @@ interface CrafterDataAccessor {
     val grid: Inventory
     val forecast: Inventory
     val result: Inventory
-    val generator: Inventory?
+    val fuel: Inventory?
 
     @Suppress("UnstableApiUsage")
     val crafter: Storage<ItemVariant>
@@ -38,7 +38,7 @@ interface CrafterDataAccessor {
         override val grid = SimpleInventory(Grid.SIZE)
         override var forecast = SimpleInventory(1)
         override val result = SimpleInventory(1)
-        override val generator = if (hasGeneratorInventory) SimpleInventory(1) else null
+        override val fuel = if (hasGeneratorInventory) SimpleInventory(1) else null
 
         override val crafter = NullStorage(ItemVariant.blank())
 

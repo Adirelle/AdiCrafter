@@ -2,32 +2,35 @@ package dev.adirelle.adicrafter.utils
 
 import java.lang.ref.WeakReference
 import java.util.*
+import java.util.function.Function
 
-/**
- * One-argument by-reference memoization
- *
- * Both argument and result are weak references.
- */
-class Memoizer<A : Any, B : Any>(private val computation: (A) -> B) {
+class Memoizer<A : Any, B : Any>(
+    private val computation: (A) -> B
+) : Function<A, B> {
 
     private val instances = WeakHashMap<A, WeakReference<B>>()
 
-    operator fun get(input: A): B {
+    override fun apply(t: A): B =
         synchronized(instances) {
-            var instance = instances[input]?.get()
-            if (instance == null) {
-                instance = computation(input)
-                instances[input] = WeakReference(instance)
-            }
-            return instance
+            instances[t]?.get() ?: (computation(t).also {
+                instances[t] = WeakReference(it)
+            })
         }
-    }
 
-    operator fun invoke(input: A): B = get(input)
+    operator fun get(input: A): B = apply(input)
+    operator fun invoke(input: A) = apply(input)
+
+    fun getOrNull(input: A): B? =
+        synchronized(instances) { instances[input]?.get() }
+
+    operator fun contains(input: A) =
+        synchronized(instances) {
+            instances[input]?.get() != null
+        }
 }
 
 /**
  * Memoize a one-argument lambda
  */
-inline fun <A : Any, B : Any> memoize(crossinline computation: (A) -> B) =
-    Memoizer<A, B> { computation(it) }
+fun <A : Any, B : Any> memoize(computation: (A) -> B) =
+    Memoizer(computation)

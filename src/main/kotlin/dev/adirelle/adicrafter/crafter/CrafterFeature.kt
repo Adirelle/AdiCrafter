@@ -9,13 +9,14 @@ import dev.adirelle.adicrafter.crafter.api.recipe.RecipeFlags
 import dev.adirelle.adicrafter.crafter.api.storage.ResourceType
 import dev.adirelle.adicrafter.crafter.api.storage.SingleTypeStorageProvider
 import dev.adirelle.adicrafter.crafter.api.storage.StorageProvider
-import dev.adirelle.adicrafter.crafter.impl.power.FuelPowerGenerator
-import dev.adirelle.adicrafter.crafter.impl.power.IllimitedPowerGenerator
-import dev.adirelle.adicrafter.crafter.impl.power.SteadyPowerGenerator
+import dev.adirelle.adicrafter.crafter.impl.power.DefaultGenerator
+import dev.adirelle.adicrafter.crafter.impl.power.IllimitedGenerator
+import dev.adirelle.adicrafter.crafter.impl.power.SolidFuelGenerator
 import dev.adirelle.adicrafter.crafter.impl.recipe.FactoryImpl
 import dev.adirelle.adicrafter.crafter.impl.storage.NeighborStorageProvider
 import dev.adirelle.adicrafter.crafter.impl.storage.StorageCompoundProvider
 import dev.adirelle.adicrafter.utils.ModFeature
+import dev.adirelle.adicrafter.utils.storage.SingleViewStorage
 import net.fabricmc.api.EnvType.CLIENT
 import net.fabricmc.api.Environment
 import net.fabricmc.fabric.api.transfer.v1.fluid.FluidStorage
@@ -33,14 +34,14 @@ object CrafterFeature : ModFeature(AdiCrafter, "crafter") {
 
     private val config by lazy { AdiCrafter.config.crafter }
 
-    val BASIC_BLOCK = CrafterBlock(::createBasicCrafterBlockEntity)
-    val FUELED_BLOCK = CrafterBlock(::createFueledCrafterBlockEntity)
+    val BASIC_CRAFTER = CrafterBlock(::createBasicCrafterBlockEntity)
+    val FUELED_CRAFTER = CrafterBlock(::createFueledCrafterBlockEntity)
 
-    val BASIC_BLOCK_ENTITY_TYPE: BlockEntityType<CrafterBlockEntity> =
-        r(ID, BASIC_BLOCK, ::createBasicCrafterBlockEntity)
+    val BASIC_CRAFTER_ENTITY_TYPE: BlockEntityType<CrafterBlockEntity> =
+        r(ID, BASIC_CRAFTER, ::createBasicCrafterBlockEntity)
 
-    val FUELED_BLOCK_ENTITY_TYPE: BlockEntityType<CrafterBlockEntity> =
-        r(id("fueled_crafter"), FUELED_BLOCK, ::createFueledCrafterBlockEntity)
+    val FUELED_CRAFTER_ENTITY_TYPE: BlockEntityType<CrafterBlockEntity> =
+        r(id("fueled_crafter"), FUELED_CRAFTER, ::createFueledCrafterBlockEntity)
 
     val SCREEN_HANDLER_TYPE = registerExtended(::CrafterScreenHandler)
 
@@ -63,23 +64,19 @@ object CrafterFeature : ModFeature(AdiCrafter, "crafter") {
     }
 
     private fun createBasicCrafterBlockEntity(pos: BlockPos, state: BlockState) =
-        createCrafterBlockEntity(BASIC_BLOCK_ENTITY_TYPE, pos, state, createBasicPowerGenerator())
+        createCrafterBlockEntity(BASIC_CRAFTER_ENTITY_TYPE, pos, state, createBasicPowerGenerator())
 
     private fun createBasicPowerGenerator() =
-        with(config.power) {
-            if (enabled) SteadyPowerGenerator(capacity, reloadRate)
-            else IllimitedPowerGenerator
-        }
+        if (config.usePower) DefaultGenerator(config.basic.capacity, config.basic.reloadRate)
+        else IllimitedGenerator
 
     private fun createFueledCrafterBlockEntity(pos: BlockPos, state: BlockState) =
-        with(config.power) {
-            createCrafterBlockEntity(
-                FUELED_BLOCK_ENTITY_TYPE,
-                pos,
-                state,
-                FuelPowerGenerator(capacity * 2, reloadRate * 2)
-            )
-        }
+        createCrafterBlockEntity(
+            FUELED_CRAFTER_ENTITY_TYPE,
+            pos,
+            state,
+            SolidFuelGenerator(config.solidFuel.capacity, config.solidFuel.reloadRate)
+        )
 
     private fun createCrafterBlockEntity(
         blockEntityType: BlockEntityType<CrafterBlockEntity>,
@@ -92,7 +89,7 @@ object CrafterFeature : ModFeature(AdiCrafter, "crafter") {
         }
 
     private fun createRecipeFactory(flags: RecipeFlags): Recipe.Factory {
-        val actualFlags = flags.set(RecipeFlags.POWER, config.power.enabled)
+        val actualFlags = flags.set(RecipeFlags.POWER, config.usePower)
         return FactoryImpl.with(actualFlags)
     }
 
@@ -102,9 +99,7 @@ object CrafterFeature : ModFeature(AdiCrafter, "crafter") {
                 buildMap {
                     put(ResourceType.ITEM, NeighborStorageProvider(ItemStorage.SIDED, world, pos))
                     put(ResourceType.FLUID, NeighborStorageProvider(FluidStorage.SIDED, world, pos))
-                    if (powerGenerator.isActive()) {
-                        put(ResourceType.POWER, SingleTypeStorageProvider.of(powerGenerator))
-                    }
+                    put(ResourceType.POWER, SingleTypeStorageProvider.of(SingleViewStorage.of(powerGenerator)))
                 }
             )
         else

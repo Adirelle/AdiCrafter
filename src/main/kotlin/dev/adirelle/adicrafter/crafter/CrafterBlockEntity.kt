@@ -16,7 +16,6 @@ import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage
 import net.fabricmc.fabric.api.util.NbtType
 import net.minecraft.block.BlockState
-import net.minecraft.block.InventoryProvider
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.block.entity.BlockEntityType
 import net.minecraft.entity.player.PlayerEntity
@@ -31,6 +30,7 @@ import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.text.Text
 import net.minecraft.text.TranslatableText
+import net.minecraft.util.ItemScatterer
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 
@@ -53,6 +53,7 @@ open class CrafterBlockEntity(
         private const val GRID_NBT_KEY = "Grid"
         private const val CONTENT_NBT_KEY = "Content"
         private const val FLAGS_NBT_KEY = "Flags"
+        private const val GENERATOR_NBT_KEY = "Generator"
     }
 
     val dataAccessor: CrafterDataAccessor = DataAccessor()
@@ -90,7 +91,7 @@ open class CrafterBlockEntity(
     }
 
     init {
-        powerGenerator.setUpdateCallback {
+        powerGenerator.addListener {
             dirtyForecast = true
             markDirty()
         }
@@ -120,7 +121,7 @@ open class CrafterBlockEntity(
 
     override fun writeScreenOpeningData(player: ServerPlayerEntity, buf: PacketByteBuf) {
         buf.writeBoolean(powerGenerator.hasPowerBar())
-        buf.writeBoolean(powerGenerator is InventoryProvider)
+        buf.writeBoolean(powerGenerator.asInventory() != null)
         recipeFlags.writeToPacket(buf)
     }
 
@@ -143,21 +144,24 @@ open class CrafterBlockEntity(
         nbt.put(GRID_NBT_KEY, grid.toNbt())
         nbt.put(CONTENT_NBT_KEY, bufferedCrafter.toNbt())
         nbt.put(FLAGS_NBT_KEY, recipeFlags.toNbt())
-        powerGenerator.writeToNbt(nbt)
+        nbt.put(GENERATOR_NBT_KEY, powerGenerator.toNbt())
     }
 
-    override fun tick(world: ServerWorld) {
+    override fun tick(world: World): Boolean {
         val crafterUpdated = updateCrafter()
         val powerUpdated = powerGenerator.tick(world)
         val forecastUpdated = updateForecast()
         if (crafterUpdated || powerUpdated || forecastUpdated) {
             updateScreenHandlers()
+            return true
         }
+        return false
     }
 
     fun dropContent() {
         val world = world as? ServerWorld ?: return
         bufferedCrafter.dropBuffer(world, pos.up())
+        ItemScatterer.spawn(world, pos.up(), powerGenerator.asInventory())
     }
 
     private fun updateScreenHandlers() {
@@ -237,8 +241,8 @@ open class CrafterBlockEntity(
                 }
             }
 
-        override val generator: Inventory? =
-            (powerGenerator as? InventoryProvider)?.getInventory(null, null, null)
+        override val fuel: Inventory? =
+            powerGenerator.asInventory()
 
         override val hasPowerBar: Boolean =
             powerGenerator.hasPowerBar()

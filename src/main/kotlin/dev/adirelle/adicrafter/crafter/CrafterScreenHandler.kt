@@ -154,8 +154,8 @@ private constructor(
             powerBar.setSize(18 * 3, 5)
         }
 
-        if (dataAccessor.generator != null) {
-            val generatorSlot = WItemSlot.of(dataAccessor.generator, 0)
+        if (dataAccessor.fuel != null) {
+            val generatorSlot = WItemSlot.of(dataAccessor.fuel, 0)
             root.add(generatorSlot, 5, 0)
         }
 

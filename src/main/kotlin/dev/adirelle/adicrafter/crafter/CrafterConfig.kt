@@ -4,14 +4,34 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class CrafterConfig(
-    val power: PowerConfig = PowerConfig()
+    val usePower: Boolean = true,
+    val craftPowerCost: Long = 200L,
+    val basic: BasicConfig = BasicConfig(),
+    val solidFuel: SolidfuelConfig = SolidfuelConfig()
+    /*,
+    val redstone: RedstoneConfig = RedstoneConfig(),
+    */
 ) {
 
     @Serializable
-    data class PowerConfig(
+    data class BasicConfig(
         val enabled: Boolean = true,
-        val capacity: Long = 1000L,
-        val cost: Long = 100L,
-        var reloadRate: Long = 10L
+        val capacity: Long = 2000L,
+        var reloadRate: Long = 20L
     )
+
+    @Serializable
+    data class SolidfuelConfig(
+        val enabled: Boolean = true,
+        val capacity: Long = 8000L,
+        var reloadRate: Long = 5L
+    )
+
+    /*
+    @Serializable
+    data class RedstoneConfig(
+        val enabled: Boolean = true,
+        val powerPerDust: Long = 200L
+    )
+    */
 }
