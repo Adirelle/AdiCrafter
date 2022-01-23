@@ -16,7 +16,7 @@
             "tag": "c:redstone_dusts"
         },
         "F": {
-            "item": "c:minecraft"
+            "item": "minecraft:furnace"
         }
     },
     "result": {
