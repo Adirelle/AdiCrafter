@@ -67,8 +67,16 @@ open class ReloadingGenerator(
         _amount = snapshot
     }
 
+    private var lastSnapshot: Long = _amount
+
+    override fun releaseSnapshot(snapshot: Long) {
+        lastSnapshot = snapshot
+    }
+
     override fun onFinalCommit() {
-        listenable.listen()
+        if (_amount != lastSnapshot) {
+            listenable.listen()
+        }
     }
 
     override fun readFromNbt(nbt: NbtCompound) {

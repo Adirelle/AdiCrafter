@@ -93,7 +93,15 @@ open class ItemConsumerGenerator(
         buffer = snapshot
     }
 
+    private var lastSnapshot: Long = 0
+
+    override fun releaseSnapshot(snapshot: Long) {
+        lastSnapshot = snapshot
+    }
+
     override fun onFinalCommit() {
-        listenable.listen()
+        if (buffer != lastSnapshot) {
+            listenable.listen()
+        }
     }
 }

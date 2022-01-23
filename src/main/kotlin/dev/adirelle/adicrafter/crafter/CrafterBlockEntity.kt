@@ -59,47 +59,39 @@ open class CrafterBlockEntity(
 
     val dataAccessor: CrafterDataAccessor = DataAccessor()
 
-    private val grid = Grid.create {
-        logger.info("grid dirty")
-        dirtyCrafter = true
-        markDirty()
-    }
+    private val grid = Grid.create(::markCrafterDirty)
 
     private var recipeFlags = RecipeFlags.NONE
         set(value) {
-            logger.info("recipeFlags updated: {}", value)
             field = value
-            dirtyCrafter = true
-            markDirty()
+            markCrafterDirty()
         }
 
     private var dirtyCrafter = false
+    private fun markCrafterDirty() {
+        dirtyCrafter = true
+    }
+
     private var crafter: Crafter = Crafter.EMPTY
         set(value) {
-            logger.info("crafter updated: {}", value)
             field = value
             dirtyCrafter = false
             world?.let {
                 bufferedCrafter.dropBufferIfOutputMismatchs(it, pos.up())
             }
-            dirtyForecast = true
+            markForecastDirty()
         }
 
-    private var bufferedCrafter = BufferedCrafter(::crafter) {
-        logger.info("bufferedCrafter dirty")
-        dirtyForecast = true
-        markDirty()
-    }
+    private var bufferedCrafter = BufferedCrafter(::crafter, ::markForecastDirty)
 
     init {
-        powerGenerator.addListener {
-            logger.info("generator callback")
-            dirtyForecast = true
-            markDirty()
-        }
+        powerGenerator.addListener(::markForecastDirty)
     }
 
     private var dirtyForecast = false
+    private fun markForecastDirty() {
+        dirtyForecast = true
+    }
     private var forecast: ItemStack = ItemStack.EMPTY
         set(value) {
             logger.info("forecast updated: {}", value.toItemString())
@@ -160,6 +152,7 @@ open class CrafterBlockEntity(
         val forecastUpdated = updateForecast()
         if (crafterUpdated || powerUpdated || forecastUpdated) {
             updateScreenHandlers()
+            markDirty()
             return true
         }
         return false
