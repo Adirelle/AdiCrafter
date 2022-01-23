@@ -133,7 +133,7 @@ open class CrafterBlockEntity(
         grid.readFromNbt(nbt.getList(GRID_NBT_KEY, NbtType.COMPOUND))
         bufferedCrafter.readFromNbt(nbt.getCompound(CONTENT_NBT_KEY))
         recipeFlags = RecipeFlags.fromNbt(nbt.getInt(FLAGS_NBT_KEY))
-        powerGenerator.readFromNbt(nbt)
+        powerGenerator.readFromNbt(nbt.getCompound(GENERATOR_NBT_KEY))
     }
 
     override fun writeNbt(nbt: NbtCompound) {
