@@ -12,6 +12,10 @@
         {
             "id": "adicrafter:fueled_crafter",
             "required": false
+        },
+        {
+            "id": "adicrafter:energized_crafter",
+            "required": false
         }
     ]
 }

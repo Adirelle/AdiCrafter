@@ -9,7 +9,6 @@ import net.minecraft.block.entity.BlockEntity
 import net.minecraft.block.entity.BlockEntityTicker
 import net.minecraft.block.entity.BlockEntityType
 import net.minecraft.entity.player.PlayerEntity
-import net.minecraft.server.world.ServerWorld
 import net.minecraft.util.ActionResult
 import net.minecraft.util.Hand
 import net.minecraft.util.hit.BlockHitResult
@@ -32,18 +31,10 @@ open class CrafterBlock(
         state: BlockState,
         type: BlockEntityType<T>
     ): BlockEntityTicker<T>? =
-        (world as? ServerWorld)?.let { wrld ->
-            when (type) {
-                CrafterFeature.BASIC_CRAFTER_ENTITY_TYPE,
-                CrafterFeature.FUELED_CRAFTER_ENTITY_TYPE,
-                CrafterFeature.REDSTONE_CRAFTER_ENTITY_TYPE ->
-                    BlockEntityTicker { _, _, _, be ->
-                        (be as? CrafterBlockEntity)?.tick(wrld)
-                    }
-                else                                        ->
-                    null
-            }
-        }
+        if (!world.isClient)
+            BlockEntityTicker { wrld, _, _, blockEntity -> (blockEntity as? CrafterBlockEntity)?.tick(wrld) }
+        else
+            null
 
     override fun onStateReplaced(
         state: BlockState,

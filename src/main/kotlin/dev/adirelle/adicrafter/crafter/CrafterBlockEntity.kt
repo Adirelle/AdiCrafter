@@ -39,7 +39,7 @@ open class CrafterBlockEntity(
     blockEntityType: BlockEntityType<CrafterBlockEntity>,
     pos: BlockPos,
     state: BlockState,
-    private val powerGenerator: PowerGenerator,
+    val powerGenerator: PowerGenerator,
     private val recipeFactoryProvider: (RecipeFlags) -> Recipe.Factory,
     private val storageProviderProvider: (World?, BlockPos) -> StorageProvider
 ) :
@@ -92,6 +92,7 @@ open class CrafterBlockEntity(
     private fun markForecastDirty() {
         dirtyForecast = true
     }
+
     private var forecast: ItemStack = ItemStack.EMPTY
         set(value) {
             field = value

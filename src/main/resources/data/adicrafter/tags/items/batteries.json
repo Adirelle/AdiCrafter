@@ -1,0 +1,13 @@
+{
+    "replace": false,
+    "values": [
+        {
+            "required": false,
+            "id": "techreborn:red_cell_battery"
+        },
+        {
+            "required": false,
+            "id": "indrev:battery"
+        }
+    ]
+}

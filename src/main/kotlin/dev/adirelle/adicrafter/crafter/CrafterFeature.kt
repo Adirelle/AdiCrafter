@@ -31,19 +31,19 @@ object CrafterFeature : ModFeature(AdiCrafter) {
 
     override fun onInitialize() {
         super.onInitialize()
-        
+
         BASIC_CRAFTER?.let { block ->
-            r(id("crafter"), block, BASIC_CRAFTER_ENTITY_TYPE!!)
+            registerBlock(id("crafter"), block, BASIC_CRAFTER_ENTITY_TYPE!!)
             LOGGER.info("Automated crafter initialized")
         }
 
         FUELED_CRAFTER?.let { block ->
-            r(id("fueled_crafter"), block, FUELED_CRAFTER_ENTITY_TYPE!!)
+            registerBlock(id("fueled_crafter"), block, FUELED_CRAFTER_ENTITY_TYPE!!)
             LOGGER.info("Fueled automated crafter initialized")
         }
 
         REDSTONE_CRAFTER?.let { block ->
-            r(id("redstone_crafter"), block, REDSTONE_CRAFTER_ENTITY_TYPE!!)
+            registerBlock(id("redstone_crafter"), block, REDSTONE_CRAFTER_ENTITY_TYPE!!)
             LOGGER.info("Redstone automated crafter initialized")
         }
     }
@@ -54,7 +54,7 @@ object CrafterFeature : ModFeature(AdiCrafter) {
         registerScreen(SCREEN_HANDLER_TYPE, ::CrafterScreen)
     }
 
-    private fun r(
+    fun registerBlock(
         id: Identifier,
         block: CrafterBlock,
         blockEntityType: BlockEntityType<CrafterBlockEntity>

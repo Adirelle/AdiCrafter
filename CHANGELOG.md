@@ -4,12 +4,17 @@
 
 ### Added
 
-* An automated crafter powered by solid fuel
-* An automated crafter powered by redstone.
+* 3 new autocrafter variants:
+    * the *redstone* autocrafter consumes redstone dust,
+    * the *fueled* autocrafter consumes any fuel that would be accepted by a furnace,
+    * the *energized* autocrafter is powered by TeamReborn Energy, as provided
+      by [Tech Reborn](https://www.curseforge.com/minecraft/mc-mods/techreborn)
+      or [Industrial Revolution](https://www.curseforge.com/minecraft/mc-mods/industrial-revolution); it is only
+      available if at least one of these mods is installed.
 
 ### Changed
 
-* The previous "automated crafter" has been renamed to "basic autocrafter".
+* The "automated crafter" has been renamed to "basic autocrafter".
 
 ### Deprecated
 

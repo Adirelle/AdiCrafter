@@ -26,13 +26,6 @@ class CrafterFactory(
     private val config: CrafterConfig
 ) {
 
-    private val disabled by lazy {
-        object : BlockFactory {
-            override val block: CrafterBlock? = null
-            override val blockEntityType: BlockEntityType<CrafterBlockEntity>? = null
-        }
-    }
-
     val basic: BlockFactory by lazy {
         if (config.basic.enabled)
             object : AbstractBlockFactory() {
@@ -42,7 +35,7 @@ class CrafterFactory(
                         else IllimitedGenerator
                     }
             }
-        else disabled
+        else BlockFactory.Disabled
     }
 
     val fueled: BlockFactory by lazy {
@@ -52,7 +45,7 @@ class CrafterFactory(
                     with(config.fueled) {
                         FueledGenerator(capacity, reloadAmount, reloadPeriod)
                     }
-            } else disabled
+            } else BlockFactory.Disabled
     }
 
     val redstone: BlockFactory by lazy {
@@ -63,13 +56,20 @@ class CrafterFactory(
                         RedstoneGenerator(powerPerDust)
                     }
             }
-        else disabled
+        else BlockFactory.Disabled
     }
 
     interface BlockFactory {
 
         val block: CrafterBlock?
         val blockEntityType: BlockEntityType<CrafterBlockEntity>?
+
+        companion object Disabled : BlockFactory {
+
+            override val block: CrafterBlock? = null
+            override val blockEntityType: BlockEntityType<CrafterBlockEntity>? = null
+        }
+
     }
 
     abstract class AbstractBlockFactory : BlockFactory {

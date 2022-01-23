@@ -1,0 +1,33 @@
+{
+    "fabric:load_conditions": [
+        {
+            "condition": "fabric:item_tags_populated",
+            "values": [
+                "adicrafter:batteries"
+            ]
+        }
+    ],
+    "type": "minecraft:crafting_shaped",
+    "pattern": [
+        "RHR",
+        "HTH",
+        "RBR"
+    ],
+    "key": {
+        "T": {
+            "tag": "c:crafting_tables"
+        },
+        "H": {
+            "tag": "c:hoppers"
+        },
+        "R": {
+            "tag": "c:redstone_dusts"
+        },
+        "B": {
+            "tag": "adicrafter:batteries"
+        }
+    },
+    "result": {
+        "item": "adicrafter:energized_crafter"
+    }
+}

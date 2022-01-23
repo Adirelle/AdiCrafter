@@ -7,7 +7,8 @@ data class CrafterConfig(
     val craftPowerCost: Long = 200,
     val basic: BasicConfig = BasicConfig(),
     val fueled: FueledConfig = FueledConfig(),
-    val redstone: RedstoneConfig = RedstoneConfig()
+    val redstone: RedstoneConfig = RedstoneConfig(),
+    val energized: EnergizedConfig = EnergizedConfig()
 ) {
 
     @Serializable
@@ -31,5 +32,12 @@ data class CrafterConfig(
     data class RedstoneConfig(
         val enabled: Boolean = true,
         val powerPerDust: Long = 200
+    )
+
+    @Serializable
+    data class EnergizedConfig(
+        val enabled: Boolean = true,
+        val capacity: Long = 4000,
+        val transferRate: Long = 32,
     )
 }

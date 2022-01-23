@@ -74,6 +74,9 @@ repositories {
         modCompileOnly("me.shedaniel:RoughlyEnoughItems-api-fabric:$roughlyEnoughItemsVersion")
         modCompileOnly("me.shedaniel:RoughlyEnoughItems-default-plugin-fabric:$roughlyEnoughItemsVersion")
         modRuntimeOnly("me.shedaniel:RoughlyEnoughItems-fabric:$roughlyEnoughItemsVersion")
+
+        val rebornEnergyVersion: String by project
+        modCompileOnly("teamreborn:energy:$rebornEnergyVersion")
     }
 }
 
