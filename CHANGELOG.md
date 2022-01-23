@@ -4,9 +4,12 @@
 
 ### Added
 
-* A fueled automated crafter, that consumes solid fuel to reload its internal power.
+* An automated crafter powered by solid fuel
+* An automated crafter powered by redstone.
 
 ### Changed
+
+* The previous "automated crafter" has been renamed to "basic autocrafter".
 
 ### Deprecated
 

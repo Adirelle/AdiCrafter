@@ -30,20 +30,18 @@ value class RecipeFlags private constructor(private val value: Int) {
     }
 
     override fun toString() =
-        "[fuzzy=%s fluids=%s power=%s]".format(
+        "[fuzzy=%s fluids=%s]".format(
             if (FUZZY in this) "yes" else "no",
-            if (FLUIDS in this) "yes" else "no",
-            if (POWER in this) "yes" else "no"
+            if (FLUIDS in this) "yes" else "no"
         )
 
     companion object {
 
         val NONE = RecipeFlags(0x00)
-        val ALL = RecipeFlags(0x07)
+        val ALL = RecipeFlags(0x03)
 
         val FUZZY = RecipeFlags(0x01)
         val FLUIDS = RecipeFlags(0x02)
-        val POWER = RecipeFlags(0x04)
 
         fun of(value: Int) =
             RecipeFlags(value and ALL.value)

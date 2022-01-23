@@ -35,11 +35,12 @@ open class CrafterBlock(
         (world as? ServerWorld)?.let { wrld ->
             when (type) {
                 CrafterFeature.BASIC_CRAFTER_ENTITY_TYPE,
-                CrafterFeature.FUELED_CRAFTER_ENTITY_TYPE ->
+                CrafterFeature.FUELED_CRAFTER_ENTITY_TYPE,
+                CrafterFeature.REDSTONE_CRAFTER_ENTITY_TYPE ->
                     BlockEntityTicker { _, _, _, be ->
                         (be as? CrafterBlockEntity)?.tick(wrld)
                     }
-                else                                      ->
+                else                                        ->
                     null
             }
         }

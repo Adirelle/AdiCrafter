@@ -20,7 +20,8 @@ class REIPlugin : REIClientPlugin {
             BuiltinPlugin.CRAFTING,
             EntryIngredient.of(
                 EntryStacks.of(CrafterFeature.BASIC_CRAFTER),
-                EntryStacks.of(CrafterFeature.FUELED_CRAFTER)
+                EntryStacks.of(CrafterFeature.FUELED_CRAFTER),
+                EntryStacks.of(CrafterFeature.REDSTONE_CRAFTER)
             )
         )
     }

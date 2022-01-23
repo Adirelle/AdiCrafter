@@ -73,61 +73,47 @@ open class Mod(val MOD_ID: String) : SidedModInitalizer {
     override fun toString() = MOD_ID
 }
 
-open class ModFeature(mod: Mod, val NAME: String) : SidedModInitalizer {
+open class ModFeature(mod: Mod) : SidedModInitalizer {
 
-    final override val LOGGER by lazyLogger("${mod.MOD_ID}:${NAME}")
+    final override val LOGGER = mod.LOGGER
 
     val MOD_ID = mod.MOD_ID
 
     fun id(name: String) = Identifier(MOD_ID, name)
 
-    val ID = id(NAME)
+    fun <T : Block> registerBlock(id: Identifier, entry: T): T =
+        entry.also { Registry.BLOCK.registerBlockEntity(id, it) }
 
-    init {
-        LOGGER.debug("initializing feature ${ID}")
-    }
-
-    fun <T : Block> register(entry: T, id: Identifier = ID): T =
-        entry.also { Registry.BLOCK.register(id, it) }
-
-    fun <T : Item> register(entry: T, id: Identifier = ID): T =
-        entry.also { Registry.ITEM.register(id, entry) }
+    fun <T : Item> registerItem(id: Identifier, entry: T): T =
+        entry.also { Registry.ITEM.registerBlockEntity(id, entry) }
 
     inline fun <T : Block> registerItemFor(
-        block: T,
-        crossinline settings: FabricItemSettings.() -> FabricItemSettings
-    ) =
-        registerItemFor(block, ID, settings)
-
-    inline fun <T : Block> registerItemFor(
-        block: T,
         id: Identifier,
+        block: T,
         crossinline settings: FabricItemSettings.() -> FabricItemSettings
     ) =
-        register(BlockItem(block, FabricItemSettings().settings()), id)
+        registerItem(id, BlockItem(block, FabricItemSettings().settings()))
 
-    fun <T : Block> registerItemFor(block: T, id: Identifier = ID) =
-        register(BlockItem(block, FabricItemSettings()), id)
+    fun <T : Block> registerItemFor(id: Identifier, block: T) =
+        registerItem(id, BlockItem(block, FabricItemSettings()))
 
-    fun <T : BlockEntity, S : T> register(
+    fun <T : BlockEntity, S : T> registerBlockEntity(
+        id: Identifier,
         factory: (BlockPos, BlockState) -> T,
-        id: Identifier = ID,
         type: Type<S>? = null,
         vararg blocks: Block,
     ): BlockEntityType<T> =
-        BlockEntityType(factory, setOf(*blocks), type)
-            .also { Registry.BLOCK_ENTITY_TYPE.register(id, it) }
+        registerBlockEntity(id, BlockEntityType(factory, setOf(*blocks), type))
 
-    fun <T : ScreenHandler> registerSimple(factory: (Int, PlayerInventory) -> T): ScreenHandlerType<T> =
-        registerSimple(ID, factory)
+    @Suppress("UNCHECKED_CAST")
+    fun <T : BlockEntity> registerBlockEntity(
+        id: Identifier,
+        blockEntityType: BlockEntityType<T>
+    ): BlockEntityType<T> =
+        Registry.BLOCK_ENTITY_TYPE.registerBlockEntity(id, blockEntityType) as BlockEntityType<T>
 
     fun <T : ScreenHandler> registerSimple(id: Identifier, factory: (Int, PlayerInventory) -> T): ScreenHandlerType<T> =
         ScreenHandlerRegistry.registerSimple(id, factory)
-
-    fun <T : ScreenHandler> registerExtended(
-        factory: (Int, PlayerInventory, PacketByteBuf) -> T,
-    ): ScreenHandlerType<T> =
-        registerExtended(ID, factory)
 
     fun <T : ScreenHandler> registerExtended(
         id: Identifier,
@@ -135,14 +121,12 @@ open class ModFeature(mod: Mod, val NAME: String) : SidedModInitalizer {
     ): ScreenHandlerType<T> =
         ScreenHandlerRegistry.registerExtended(id, factory)
 
-    fun <T, S> register(
+    fun <T, S> registerScreen(
         type: ScreenHandlerType<T>,
         factory: (T, PlayerInventory, Text) -> S,
     ) where T : ScreenHandler, S : Screen, S : ScreenHandlerProvider<T> =
         ScreenRegistry.register(type, factory)
 
-    private fun <T> Registry<T>.register(id: Identifier, entry: T): T =
+    private fun <T> Registry<T>.registerBlockEntity(id: Identifier, entry: T): T =
         Registry.register(this, id, entry)
-
-    override fun toString() = ID.toString()
 }

@@ -11,6 +11,8 @@ import dev.adirelle.adicrafter.utils.extensions.get
 import dev.adirelle.adicrafter.utils.extensions.toNbt
 import dev.adirelle.adicrafter.utils.inventory.ListenableInventory
 import dev.adirelle.adicrafter.utils.inventory.SimpleListenableInventory
+import dev.adirelle.adicrafter.utils.lazyLogger
+import dev.adirelle.adicrafter.utils.toItemString
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 import net.fabricmc.fabric.api.transfer.v1.transaction.base.SnapshotParticipant
 import net.minecraft.item.Item
@@ -22,6 +24,8 @@ open class ItemConsumerGenerator(
     private val itemProducts: Map<Item, Long>,
     private val listenable: SimpleListenable = SimpleListenable()
 ) : PowerGenerator, Listenable by listenable, SnapshotParticipant<Long>() {
+
+    private val logger by lazyLogger
 
     private val inventory = SimpleListenableInventory(1)
     private val storage = inventory.asStorage()
@@ -40,7 +44,7 @@ open class ItemConsumerGenerator(
     override fun getAmount() = powerPerItem() * storage[0].amount
     override fun getCapacity() = powerPerItem() * storage[0].capacity
     override fun asInventory(): ListenableInventory = inventory
-    
+
     private fun powerPerItem(): Long = itemProducts.getOrDefault(stack.item, 0)
 
     override fun extract(resource: PowerVariant, maxAmount: Long, tx: TransactionContext): Long {
@@ -67,14 +71,15 @@ open class ItemConsumerGenerator(
     }
 
     override fun readFromNbt(nbt: NbtCompound) {
-        stack = ItemStack.fromNbt(nbt.getCompound("stack"))
         buffer = nbt.getLong("buffer")
+        stack = ItemStack.fromNbt(nbt)
+        logger.info("ItemConsumerGenerator::readFromNbt, buffer={}, stack={}", buffer, stack.toItemString())
     }
 
     override fun toNbt() =
-        NbtCompound().apply {
-            put("stack", stack.toNbt())
+        stack.toNbt().apply {
             putLong("buffer", buffer)
+            logger.info("ItemConsumerGenerator::toNbt, buffer={}, stack={}", buffer, stack.toItemString())
         }
 
     override fun createSnapshot() = buffer

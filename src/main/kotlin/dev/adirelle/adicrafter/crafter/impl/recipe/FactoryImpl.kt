@@ -57,10 +57,7 @@ class FactoryImpl(
                 else
                     ExactRecipeIngredientFactory(itemIngredientFactory)
 
-            return if (RecipeFlags.POWER in flags)
-                PoweredRecipeIngredientFactory(recipeIngredientFactory, powerCost)
-            else
-                recipeIngredientFactory
+            return PoweredRecipeIngredientFactory(recipeIngredientFactory, powerCost)
         }
 
     }

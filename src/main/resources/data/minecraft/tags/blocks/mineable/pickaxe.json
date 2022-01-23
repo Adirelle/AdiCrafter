@@ -1,6 +1,17 @@
 {
     "replace": false,
     "values": [
-        "adicrafter:crafter"
+        {
+            "id": "adicrafter:crafter",
+            "required": false
+        },
+        {
+            "id": "adicrafter:redstone_crafter",
+            "required": false
+        },
+        {
+            "id": "adicrafter:fueled_crafter",
+            "required": false
+        }
     ]
 }

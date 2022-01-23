@@ -3,7 +3,7 @@
     "pattern": [
         "RHR",
         "HTH",
-        "RFR"
+        "RBR"
     ],
     "key": {
         "T": {
@@ -15,8 +15,8 @@
         "R": {
             "tag": "c:redstone_dusts"
         },
-        "F": {
-            "item": "c:minecraft"
+        "B": {
+            "tag": "c:redstone_blocks"
         }
     },
     "result": {

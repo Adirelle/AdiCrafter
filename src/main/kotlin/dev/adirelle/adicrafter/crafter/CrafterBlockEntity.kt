@@ -32,6 +32,7 @@ import net.minecraft.text.Text
 import net.minecraft.text.TranslatableText
 import net.minecraft.util.ItemScatterer
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.registry.Registry
 import net.minecraft.world.World
 
 open class CrafterBlockEntity(
@@ -92,6 +93,7 @@ open class CrafterBlockEntity(
 
     init {
         powerGenerator.addListener {
+            logger.info("generator callback")
             dirtyForecast = true
             markDirty()
         }
@@ -111,7 +113,12 @@ open class CrafterBlockEntity(
 
     private val storageProvider by lazy { storageProviderProvider(world, pos) }
 
-    override fun getDisplayName(): Text = TranslatableText("block.adicrafter.crafter")
+    private val titleKey by lazy {
+        val id = Registry.BLOCK_ENTITY_TYPE.getId(blockEntityType)
+        "block.adicrafter.${id?.path ?: "crafter"}"
+    }
+
+    override fun getDisplayName(): Text = TranslatableText(titleKey)
 
     override fun createMenu(syncId: Int, playerInventory: PlayerInventory, player: PlayerEntity): ScreenHandler {
         val handler = CrafterScreenHandler(syncId, playerInventory, this.dataAccessor)
