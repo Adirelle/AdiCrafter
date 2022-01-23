@@ -1,6 +1,8 @@
 package dev.adirelle.adicrafter.bridge.rei
 
-import dev.adirelle.adicrafter.crafter.CrafterFeature
+import dev.adirelle.adicrafter.crafter.CrafterFeature.BASIC_CRAFTER
+import dev.adirelle.adicrafter.crafter.CrafterFeature.FUELED_CRAFTER
+import dev.adirelle.adicrafter.crafter.CrafterFeature.REDSTONE_CRAFTER
 import dev.adirelle.adicrafter.crafter.CrafterScreenHandler
 import me.shedaniel.rei.api.client.plugins.REIClientPlugin
 import me.shedaniel.rei.api.client.registry.category.CategoryRegistry
@@ -16,14 +18,11 @@ import net.minecraft.recipe.CraftingRecipe
 class REIPlugin : REIClientPlugin {
 
     override fun registerCategories(registry: CategoryRegistry) {
-        registry.addWorkstations(
-            BuiltinPlugin.CRAFTING,
-            EntryIngredient.of(
-                EntryStacks.of(CrafterFeature.BASIC_CRAFTER),
-                EntryStacks.of(CrafterFeature.FUELED_CRAFTER),
-                EntryStacks.of(CrafterFeature.REDSTONE_CRAFTER)
-            )
-        )
+        val entryStacks = listOfNotNull(BASIC_CRAFTER, FUELED_CRAFTER, REDSTONE_CRAFTER)
+            .map(EntryStacks::of)
+        if (entryStacks.isEmpty()) return
+
+        registry.addWorkstations(BuiltinPlugin.CRAFTING, EntryIngredient.of(entryStacks))
     }
 
     override fun registerTransferHandlers(registry: TransferHandlerRegistry) {
