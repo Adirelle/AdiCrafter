@@ -142,7 +142,19 @@ tasks {
 
     processResources {
         inputs.property("version", project.version)
-        filesMatching("fabric.mod.json") { expand(mutableMapOf("version" to project.version)) }
+        fun prop(name: String) = name to project.property(name)
+        filesMatching("fabric.mod.json") {
+            expand(
+                mapOf(
+                    "version" to project.version,
+                    prop("minecraftVersion"),
+                    prop("loaderVersion"),
+                    prop("fabricVersion"),
+                    prop("fabricKotlinVersion"),
+                    prop("libGuiVersion")
+                )
+            )
+        }
     }
 
     java {

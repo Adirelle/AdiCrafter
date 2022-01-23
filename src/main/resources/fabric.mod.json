@@ -39,10 +39,11 @@
         "adicrafter.mixins.json"
     ],
     "depends": {
-        "minecraft": "~1.18.0",
-        "fabricloader": ">=0.12.12",
-        "fabric": "*",
-        "fabric-language-kotlin": ">=1.7.1+kotlin.1.6.10",
+        "minecraft": "~${minecraftVersion}",
+        "fabricloader": ">=${loaderVersion}",
+        "fabric": "~${fabricVersion}",
+        "fabric-language-kotlin": "~${fabricKotlinVersion}",
+        "libgui": "~${libGuiVersion}",
         "java": ">=17"
     }
 }
