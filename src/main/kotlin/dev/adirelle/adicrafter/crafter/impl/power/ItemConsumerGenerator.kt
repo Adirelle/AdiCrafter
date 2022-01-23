@@ -11,7 +11,6 @@ import dev.adirelle.adicrafter.utils.extensions.get
 import dev.adirelle.adicrafter.utils.inventory.ListenableInventory
 import dev.adirelle.adicrafter.utils.inventory.SimpleListenableInventory
 import dev.adirelle.adicrafter.utils.lazyLogger
-import dev.adirelle.adicrafter.utils.toItemString
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 import net.fabricmc.fabric.api.transfer.v1.transaction.base.SnapshotParticipant
 import net.fabricmc.fabric.api.util.NbtType
@@ -78,13 +77,11 @@ open class ItemConsumerGenerator(
     override fun readFromNbt(nbt: NbtCompound) {
         inventory.readNbtList(nbt.getList("inventory", NbtType.COMPOUND))
         buffer = nbt.getLong("buffer")
-        logger.info("ItemConsumerGenerator::readFromNbt, buffer={}, stack={}", buffer, stack.toItemString())
     }
 
     override fun toNbt() = NbtCompound().apply {
         put("inventory", inventory.toNbtList())
         putLong("buffer", buffer)
-        logger.info("ItemConsumerGenerator::toNbt, buffer={}, stack={}", buffer, stack.toItemString())
     }
 
     override fun createSnapshot() = buffer

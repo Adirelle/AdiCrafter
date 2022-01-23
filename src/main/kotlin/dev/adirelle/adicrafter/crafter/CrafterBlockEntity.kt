@@ -94,7 +94,6 @@ open class CrafterBlockEntity(
     }
     private var forecast: ItemStack = ItemStack.EMPTY
         set(value) {
-            logger.info("forecast updated: {}", value.toItemString())
             field = value
             dirtyForecast = false
         }
@@ -196,7 +195,6 @@ open class CrafterBlockEntity(
         }
 
     private fun updateMissingIngredients() {
-        logger.info("updateMissingIngredients")
         if (crafter.isResourceBlank || !forecast.isEmpty) {
             missingIngredients.clear()
             return

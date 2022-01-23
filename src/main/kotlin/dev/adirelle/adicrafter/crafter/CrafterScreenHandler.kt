@@ -179,7 +179,7 @@ private constructor(
         when (recipe) {
             is ShapedRecipe    -> dataAccessor.grid.loadFrom(recipe)
             is ShapelessRecipe -> dataAccessor.grid.loadFrom(recipe)
-            else               -> logger.debug("unhandled recipe type: {}", recipe)
+            else               -> logger.warn("unhandled recipe type: {}", recipe)
         }
     }
 
