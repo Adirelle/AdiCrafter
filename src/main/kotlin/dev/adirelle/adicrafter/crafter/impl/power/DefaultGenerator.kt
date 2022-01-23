@@ -2,5 +2,5 @@
 
 package dev.adirelle.adicrafter.crafter.impl.power
 
-class DefaultGenerator(capacity: Long, reloadRate: Long) :
-    ReloadingGenerator(capacity, reloadRate, IllimitedGenerator)
+class DefaultGenerator(capacity: Long, reloadAmount: Long, reloadPeriod: Long) :
+    ReloadingGenerator(capacity, reloadAmount, reloadPeriod, IllimitedGenerator)

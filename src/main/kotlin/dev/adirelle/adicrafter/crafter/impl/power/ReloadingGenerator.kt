@@ -16,7 +16,8 @@ import kotlin.math.min
 
 open class ReloadingGenerator(
     private val _capacity: Long,
-    private val reloadRate: Long,
+    private val reloadAmount: Long,
+    private val reloadPeriod: Long,
     private val source: PowerGenerator,
     private val listenable: SimpleListenable = SimpleListenable()
 ) : PowerGenerator, SnapshotParticipant<Long>(), Listenable by listenable {
@@ -43,11 +44,12 @@ open class ReloadingGenerator(
 
     override fun tick(world: World): Boolean {
         val sourceChanged = source.tick(world)
-        return tickInternal() || sourceChanged
+        return tickInternal(world) || sourceChanged
     }
 
-    private fun tickInternal(): Boolean {
-        val request = min(_capacity - amount, reloadRate)
+    private fun tickInternal(world: World): Boolean {
+        if (world.time % reloadPeriod != 0L) return false
+        val request = min(_capacity - amount, reloadAmount)
         if (request <= 0) return false
         withOuterTransaction { tx ->
             val extracted = source.extract(INSTANCE, request, tx)

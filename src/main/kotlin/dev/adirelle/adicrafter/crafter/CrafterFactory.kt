@@ -7,9 +7,9 @@ import dev.adirelle.adicrafter.crafter.api.storage.ResourceType
 import dev.adirelle.adicrafter.crafter.api.storage.SingleTypeStorageProvider
 import dev.adirelle.adicrafter.crafter.api.storage.StorageProvider
 import dev.adirelle.adicrafter.crafter.impl.power.DefaultGenerator
+import dev.adirelle.adicrafter.crafter.impl.power.FueledGenerator
 import dev.adirelle.adicrafter.crafter.impl.power.IllimitedGenerator
 import dev.adirelle.adicrafter.crafter.impl.power.RedstoneGenerator
-import dev.adirelle.adicrafter.crafter.impl.power.SolidFuelGenerator
 import dev.adirelle.adicrafter.crafter.impl.recipe.FactoryImpl
 import dev.adirelle.adicrafter.crafter.impl.storage.NeighborStorageProvider
 import dev.adirelle.adicrafter.crafter.impl.storage.StorageCompoundProvider
@@ -38,7 +38,7 @@ class CrafterFactory(
             object : AbstractBlockFactory() {
                 override fun createGenerator(): PowerGenerator =
                     with(config.basic) {
-                        if (usePower) DefaultGenerator(capacity, reloadRate)
+                        if (usePower) DefaultGenerator(capacity, reloadAmount, reloadPeriod)
                         else IllimitedGenerator
                     }
             }
@@ -46,11 +46,11 @@ class CrafterFactory(
     }
 
     val fueled: BlockFactory by lazy {
-        if (config.solidFuel.enabled)
+        if (config.fueled.enabled)
             object : AbstractBlockFactory() {
                 override fun createGenerator(): PowerGenerator =
-                    with(config.solidFuel) {
-                        SolidFuelGenerator(capacity, reloadRate)
+                    with(config.fueled) {
+                        FueledGenerator(capacity, reloadAmount, reloadPeriod)
                     }
             } else disabled
     }
