@@ -2,22 +2,22 @@
 
 package dev.adirelle.adicrafter.crafter.api.power
 
-import dev.adirelle.adicrafter.utils.Listenable
+import dev.adirelle.adicrafter.crafter.api.Removeable
 import dev.adirelle.adicrafter.utils.NbtSerializable
 import dev.adirelle.adicrafter.utils.Tickable
-import dev.adirelle.adicrafter.utils.inventory.ListenableInventory
 import net.fabricmc.fabric.api.transfer.v1.storage.StorageView
-import net.minecraft.nbt.NbtCompound
-import net.minecraft.world.World
+import net.minecraft.inventory.Inventory
 
-interface PowerSource : StorageView<PowerVariant>, Tickable, Listenable, NbtSerializable {
+interface PowerSource : StorageView<PowerVariant>, Tickable, NbtSerializable, Removeable {
 
-    fun asInventory(): ListenableInventory? = null
-
-    override fun isResourceBlank() = amount > 0
-    override fun getResource() = PowerVariant
+    fun asInventory(): Inventory? = null
     fun hasPowerBar(): Boolean = false
-    override fun tick(world: World) = false
-    override fun readFromNbt(nbt: NbtCompound) {}
-    override fun toNbt(): NbtCompound = NbtCompound()
+
+    override fun isResourceBlank() = amount == 0L
+    override fun getResource() = PowerVariant
+
+    fun interface Listener {
+
+        fun onPowerChanged()
+    }
 }

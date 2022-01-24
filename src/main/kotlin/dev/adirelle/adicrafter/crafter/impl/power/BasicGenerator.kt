@@ -2,5 +2,7 @@
 
 package dev.adirelle.adicrafter.crafter.impl.power
 
-class BasicGenerator(capacity: Long, reloadRate: Long) :
-    ReloadingGenerator(capacity, reloadRate, IllimitedGenerator)
+import dev.adirelle.adicrafter.crafter.api.power.PowerSource
+
+class BasicGenerator(capacity: Long, reloadRate: Long, listener: PowerSource.Listener) :
+    ReloadingGenerator(capacity, reloadRate, IllimitedGenerator, listener)

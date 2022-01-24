@@ -3,16 +3,15 @@
 package dev.adirelle.adicrafter.crafter.impl.power
 
 import dev.adirelle.adicrafter.crafter.api.power.PowerSource
+import dev.adirelle.adicrafter.crafter.api.power.PowerSource.Listener
 import dev.adirelle.adicrafter.crafter.api.power.PowerVariant
-import dev.adirelle.adicrafter.utils.Listenable
-import dev.adirelle.adicrafter.utils.SimpleListenable
 import dev.adirelle.adicrafter.utils.extensions.asStorage
 import dev.adirelle.adicrafter.utils.extensions.get
-import dev.adirelle.adicrafter.utils.inventory.ListenableInventory
-import dev.adirelle.adicrafter.utils.inventory.SimpleListenableInventory
+import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 import net.fabricmc.fabric.api.transfer.v1.transaction.base.SnapshotParticipant
 import net.fabricmc.fabric.api.util.NbtType
+import net.minecraft.inventory.SimpleInventory
 import net.minecraft.item.Item
 import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NbtCompound
@@ -21,16 +20,22 @@ import kotlin.math.min
 
 open class ItemConsumerGenerator(
     private val powerPerItem: Map<Item, Long>,
-    private val listenable: SimpleListenable = SimpleListenable()
-) : PowerSource, Listenable by listenable, SnapshotParticipant<Long>() {
+    private val listener: Listener
+) : PowerSource, SnapshotParticipant<Long>() {
 
     private val maxPowerPerItem = powerPerItem.values.maxOf { it }
 
-    private val inventory: SimpleListenableInventory =
-        object : SimpleListenableInventory(1) {
+    private val inventory: SimpleInventory =
+        object : SimpleInventory(1) {
 
             override fun isValid(slot: Int, stack: ItemStack) =
                 super.isValid(slot, stack) && stack.item in powerPerItem
+
+            override fun markDirty() {
+                if (!Transaction.isOpen()) {
+                    listener.onPowerChanged()
+                }
+            }
         }
 
     private val storage = inventory.asStorage()
@@ -41,14 +46,10 @@ open class ItemConsumerGenerator(
 
     private var buffer: Long = 0L
 
-    init {
-        inventory.addListener(listenable)
-    }
-
     override fun hasPowerBar() = true
     override fun getAmount() = max(buffer, powerPerItem[stack.item] ?: 0L)
     override fun getCapacity() = maxPowerPerItem
-    override fun asInventory(): ListenableInventory = inventory
+    override fun asInventory() = inventory
 
     override fun extract(resource: PowerVariant, maxAmount: Long, tx: TransactionContext): Long {
         if (maxAmount > buffer) {
@@ -88,15 +89,7 @@ open class ItemConsumerGenerator(
         buffer = snapshot
     }
 
-    private var lastSnapshot: Long = 0
-
-    override fun releaseSnapshot(snapshot: Long) {
-        lastSnapshot = snapshot
-    }
-
     override fun onFinalCommit() {
-        if (buffer != lastSnapshot) {
-            listenable.listen()
-        }
+        listener.onPowerChanged()
     }
 }

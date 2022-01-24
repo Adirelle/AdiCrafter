@@ -14,8 +14,8 @@ object EnergyFeature : ModFeature(AdiCrafter) {
 
     val factory = if (config.enabled)
         object : AbstractBlockFactory() {
-            override fun createGenerator(): PowerSource =
-                EnergySource(config.capacity, config.transferRate)
+            override fun createGenerator(listener: PowerSource.Listener): PowerSource =
+                EnergySource(config.capacity, config.transferRate, listener)
         }
     else
         BlockFactory.Disabled

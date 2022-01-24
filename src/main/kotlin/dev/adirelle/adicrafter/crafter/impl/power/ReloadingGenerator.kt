@@ -3,9 +3,8 @@
 package dev.adirelle.adicrafter.crafter.impl.power
 
 import dev.adirelle.adicrafter.crafter.api.power.PowerSource
+import dev.adirelle.adicrafter.crafter.api.power.PowerSource.Listener
 import dev.adirelle.adicrafter.crafter.api.power.PowerVariant
-import dev.adirelle.adicrafter.utils.Listenable
-import dev.adirelle.adicrafter.utils.SimpleListenable
 import dev.adirelle.adicrafter.utils.withOuterTransaction
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 import net.fabricmc.fabric.api.transfer.v1.transaction.base.SnapshotParticipant
@@ -17,12 +16,8 @@ open class ReloadingGenerator(
     private val _capacity: Long,
     private val reloadRate: Long,
     private val source: PowerSource,
-    private val listenable: SimpleListenable = SimpleListenable()
-) : PowerSource, SnapshotParticipant<Long>(), Listenable by listenable {
-
-    init {
-        source.addListener { listenable.listen() }
-    }
+    private val listener: Listener
+) : PowerSource, SnapshotParticipant<Long>() {
 
     private var _amount = 0L
 
@@ -42,10 +37,10 @@ open class ReloadingGenerator(
 
     override fun tick(world: World): Boolean {
         val sourceChanged = source.tick(world)
-        return tickInternal(world) || sourceChanged
+        return tickInternal() || sourceChanged
     }
 
-    private fun tickInternal(world: World): Boolean {
+    private fun tickInternal(): Boolean {
         val request = min(_capacity - amount, reloadRate)
         if (request <= 0) return false
         withOuterTransaction { tx ->
@@ -64,16 +59,8 @@ open class ReloadingGenerator(
         _amount = snapshot
     }
 
-    private var lastSnapshot: Long = _amount
-
-    override fun releaseSnapshot(snapshot: Long) {
-        lastSnapshot = snapshot
-    }
-
     override fun onFinalCommit() {
-        if (_amount != lastSnapshot) {
-            listenable.listen()
-        }
+        listener.onPowerChanged()
     }
 
     override fun readFromNbt(nbt: NbtCompound) {

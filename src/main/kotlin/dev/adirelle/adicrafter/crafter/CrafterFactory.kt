@@ -3,6 +3,7 @@
 package dev.adirelle.adicrafter.crafter
 
 import dev.adirelle.adicrafter.crafter.api.power.PowerSource
+import dev.adirelle.adicrafter.crafter.api.power.PowerSource.Listener
 import dev.adirelle.adicrafter.crafter.api.storage.ResourceType
 import dev.adirelle.adicrafter.crafter.api.storage.SingleTypeStorageProvider
 import dev.adirelle.adicrafter.crafter.api.storage.StorageProvider
@@ -14,6 +15,7 @@ import dev.adirelle.adicrafter.crafter.impl.recipe.FactoryImpl
 import dev.adirelle.adicrafter.crafter.impl.storage.NeighborStorageProvider
 import dev.adirelle.adicrafter.crafter.impl.storage.StorageCompoundProvider
 import dev.adirelle.adicrafter.utils.storage.SingleViewStorage
+import io.github.cottonmc.cotton.gui.impl.client.LibGuiClient.logger
 import net.fabricmc.fabric.api.transfer.v1.fluid.FluidStorage
 import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage
 import net.minecraft.block.BlockState
@@ -30,8 +32,8 @@ class CrafterFactory(
         with(config.basic) {
             if (enabled)
                 object : AbstractBlockFactory() {
-                    override fun createGenerator(): PowerSource =
-                        if (usePower) BasicGenerator(capacity, reloadRate)
+                    override fun createGenerator(listener: Listener): PowerSource =
+                        if (usePower) BasicGenerator(capacity, reloadRate, listener)
                         else IllimitedGenerator
                 }
             else BlockFactory.Disabled
@@ -42,8 +44,8 @@ class CrafterFactory(
         with(config.fueled) {
             if (enabled)
                 object : AbstractBlockFactory() {
-                    override fun createGenerator(): PowerSource =
-                        FueledGenerator(capacity, reloadRate, powerPerBurningTick)
+                    override fun createGenerator(listener: Listener): PowerSource =
+                        FueledGenerator(capacity, reloadRate, powerPerBurningTick, listener)
                 } else BlockFactory.Disabled
         }
     }
@@ -51,9 +53,9 @@ class CrafterFactory(
     val redstone: BlockFactory by lazy {
         if (config.redstone.enabled)
             object : AbstractBlockFactory() {
-                override fun createGenerator(): PowerSource =
+                override fun createGenerator(listener: Listener): PowerSource =
                     with(config.redstone) {
-                        RedstoneGenerator(powerPerDust)
+                        RedstoneGenerator(powerPerDust, listener)
                     }
             }
         else BlockFactory.Disabled
@@ -69,7 +71,6 @@ class CrafterFactory(
             override val block: CrafterBlock? = null
             override val blockEntityType: BlockEntityType<CrafterBlockEntity>? = null
         }
-
     }
 
     abstract class AbstractBlockFactory : BlockFactory {
@@ -77,12 +78,20 @@ class CrafterFactory(
         final override val block = CrafterBlock(::createBlockEntity)
         final override val blockEntityType = BlockEntityType(::createBlockEntity, setOf(block), null)
 
-        protected abstract fun createGenerator(): PowerSource
+        protected abstract fun createGenerator(listener: Listener): PowerSource
 
         private fun createBlockEntity(pos: BlockPos, state: BlockState): CrafterBlockEntity {
-            val generator = createGenerator()
-            return CrafterBlockEntity(blockEntityType, pos, state, generator, FactoryImpl::with)
+            lateinit var blockEntity: CrafterBlockEntity
+
+            val generator = createGenerator {
+                logger.info("onPowerChanged from factory")
+                blockEntity.onPowerChanged()
+            }
+
+            blockEntity = CrafterBlockEntity(blockEntityType, pos, state, generator, FactoryImpl::with)
             { world, _ -> createStorageProvider(world, pos, generator) }
+
+            return blockEntity
         }
 
         private fun createStorageProvider(

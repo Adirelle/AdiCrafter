@@ -6,11 +6,11 @@ import dev.adirelle.adicrafter.crafter.api.Crafter
 import dev.adirelle.adicrafter.crafter.api.recipe.Ingredient
 import dev.adirelle.adicrafter.crafter.api.recipe.ItemIngredient
 import dev.adirelle.adicrafter.crafter.api.storage.StorageProvider
-import dev.adirelle.adicrafter.utils.lazyLogger
 import dev.adirelle.adicrafter.utils.withNestedTransaction
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
-import net.minecraft.item.Item
+import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext.OuterCloseCallback
+import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext.Result
 import net.minecraft.item.ItemConvertible
 import java.util.*
 import kotlin.math.min
@@ -20,9 +20,8 @@ class CrafterImpl(
     private val amount: Long,
     private val ingredients: Iterable<Ingredient<*>>,
     private val storageProvider: StorageProvider,
-) : Crafter {
-
-    private val logger by lazyLogger
+    private val listener: Crafter.Listener
+) : Crafter, OuterCloseCallback {
 
     override fun isResourceBlank() = resource.isBlank
     override fun getResource() = resource
@@ -30,18 +29,11 @@ class CrafterImpl(
     override fun getCapacity() = resource.item.maxCount.toLong()
 
     override fun findIngredientFor(item: ItemConvertible): Optional<ItemIngredient> {
-        val resource = ItemVariant.of(item)
+        val realItem = item.asItem()
+        @Suppress("UNCHECKED_CAST")
         return Optional.ofNullable(
-            ingredients
-                .mapNotNull {
-                    if (it.resource.`object` is Item)
-                        @Suppress("UNCHECKED_CAST")
-                        it as ItemIngredient
-                    else
-                        null
-                }
-                .firstOrNull { it.matches(resource) }
-        )
+            ingredients.firstOrNull { it.resource.`object` == realItem }
+        ) as Optional<ItemIngredient>
     }
 
     override fun extract(resource: ItemVariant, maxAmount: Long, tx: TransactionContext): Long {
@@ -49,6 +41,7 @@ class CrafterImpl(
         val available = withNestedTransaction(tx) { nested ->
             val (exact, crafted) = craftInternal(maxAmount, nested)
             if (exact) {
+                tx.addOuterCloseCallback(this)
                 nested.commit()
                 return crafted
             }
@@ -82,5 +75,11 @@ class CrafterImpl(
             if (craftedBatchs == 0L) break
         }
         return Pair(craftedBatchs == maxBatchs, amount * craftedBatchs)
+    }
+
+    override fun afterOuterClose(result: Result) {
+        if (result.wasCommitted()) {
+            listener.onCrafterUpdate()
+        }
     }
 }

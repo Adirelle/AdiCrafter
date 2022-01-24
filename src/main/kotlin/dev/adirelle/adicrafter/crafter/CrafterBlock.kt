@@ -43,12 +43,21 @@ open class CrafterBlock(
         newState: BlockState,
         moved: Boolean
     ) {
-        if (!state.isOf(newState.block) && !world.isClient) {
-            (world.getBlockEntity(pos) as? CrafterBlockEntity)
-                ?.dropContent()
+        if (!state.isOf(newState.block)) {
+            (world.takeUnless { it.isClient }
+                ?.getBlockEntity(pos) as? CrafterBlockEntity)
+                ?.onRemoved(world, pos)
         }
         @Suppress("DEPRECATION")
         super.onStateReplaced(state, world, pos, newState, moved)
+    }
+
+    override fun hasComparatorOutput(state: BlockState?): Boolean {
+        return super.hasComparatorOutput(state)
+    }
+
+    override fun getComparatorOutput(state: BlockState?, world: World?, pos: BlockPos?): Int {
+        return super.getComparatorOutput(state, world, pos)
     }
 
     override fun onUse(

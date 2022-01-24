@@ -4,8 +4,6 @@ package dev.adirelle.adicrafter.bridge.rebornenergy
 
 import dev.adirelle.adicrafter.crafter.api.power.PowerSource
 import dev.adirelle.adicrafter.crafter.api.power.PowerVariant
-import dev.adirelle.adicrafter.utils.Listenable
-import dev.adirelle.adicrafter.utils.SimpleListenable
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 import net.minecraft.nbt.NbtCompound
 import team.reborn.energy.api.base.SimpleEnergyStorage
@@ -13,13 +11,12 @@ import team.reborn.energy.api.base.SimpleEnergyStorage
 class EnergySource(
     capacity: Long,
     transferRate: Long,
-    private val listenable: SimpleListenable = SimpleListenable()
+    private val listener: PowerSource.Listener
 ) : PowerSource,
-    Listenable by listenable,
     SimpleEnergyStorage(capacity, transferRate, capacity) {
 
     override fun onFinalCommit() {
-        listenable.listen()
+        listener.onPowerChanged()
     }
 
     override fun hasPowerBar() = true

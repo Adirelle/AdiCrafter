@@ -1,5 +1,6 @@
 package dev.adirelle.adicrafter.crafter.impl.power
 
+import dev.adirelle.adicrafter.crafter.api.power.PowerSource.Listener
 import dev.adirelle.adicrafter.utils.memoize
 import net.minecraft.item.Item
 import net.minecraft.tag.ServerTagManagerHolder
@@ -8,8 +9,9 @@ import net.minecraft.util.Identifier
 import net.minecraft.util.registry.Registry
 
 class RedstoneGenerator(
-    powerPerDust: Long
-) : ItemConsumerGenerator(memoizedFuelMap(powerPerDust)) {
+    powerPerDust: Long,
+    listener: Listener
+) : ItemConsumerGenerator(memoizedFuelMap(powerPerDust), listener) {
 
     override fun hasPowerBar() = true
 
