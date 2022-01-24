@@ -2,7 +2,7 @@
 
 package dev.adirelle.adicrafter.crafter.impl.power
 
-import dev.adirelle.adicrafter.crafter.api.power.PowerGenerator
+import dev.adirelle.adicrafter.crafter.api.power.PowerSource
 import dev.adirelle.adicrafter.crafter.api.power.PowerVariant
 import dev.adirelle.adicrafter.utils.Listenable
 import dev.adirelle.adicrafter.utils.SimpleListenable
@@ -23,7 +23,7 @@ import kotlin.math.min
 open class ItemConsumerGenerator(
     private val itemPower: (Item) -> Optional<Long>,
     private val listenable: SimpleListenable = SimpleListenable()
-) : PowerGenerator, Listenable by listenable, SnapshotParticipant<Long>() {
+) : PowerSource, Listenable by listenable, SnapshotParticipant<Long>() {
 
     private val logger by lazyLogger
 

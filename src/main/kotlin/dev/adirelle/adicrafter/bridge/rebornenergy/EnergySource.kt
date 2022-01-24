@@ -2,7 +2,7 @@
 
 package dev.adirelle.adicrafter.bridge.rebornenergy
 
-import dev.adirelle.adicrafter.crafter.api.power.PowerGenerator
+import dev.adirelle.adicrafter.crafter.api.power.PowerSource
 import dev.adirelle.adicrafter.crafter.api.power.PowerVariant
 import dev.adirelle.adicrafter.utils.Listenable
 import dev.adirelle.adicrafter.utils.SimpleListenable
@@ -10,11 +10,11 @@ import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 import net.minecraft.nbt.NbtCompound
 import team.reborn.energy.api.base.SimpleEnergyStorage
 
-class EnergyGenerator(
+class EnergySource(
     capacity: Long,
     transferRate: Long,
     private val listenable: SimpleListenable = SimpleListenable()
-) : PowerGenerator,
+) : PowerSource,
     Listenable by listenable,
     SimpleEnergyStorage(capacity, transferRate, capacity) {
 

@@ -1,7 +1,6 @@
 package dev.adirelle.adicrafter.crafter.api.power
 
-enum class Power {
-    INSTANCE;
+object Power {
 
     override fun toString() = "Power"
 }

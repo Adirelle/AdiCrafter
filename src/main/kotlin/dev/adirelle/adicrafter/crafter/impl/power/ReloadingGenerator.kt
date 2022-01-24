@@ -2,9 +2,8 @@
 
 package dev.adirelle.adicrafter.crafter.impl.power
 
-import dev.adirelle.adicrafter.crafter.api.power.PowerGenerator
+import dev.adirelle.adicrafter.crafter.api.power.PowerSource
 import dev.adirelle.adicrafter.crafter.api.power.PowerVariant
-import dev.adirelle.adicrafter.crafter.api.power.PowerVariant.INSTANCE
 import dev.adirelle.adicrafter.utils.Listenable
 import dev.adirelle.adicrafter.utils.SimpleListenable
 import dev.adirelle.adicrafter.utils.withOuterTransaction
@@ -18,9 +17,9 @@ open class ReloadingGenerator(
     private val _capacity: Long,
     private val reloadAmount: Long,
     private val reloadPeriod: Long,
-    private val source: PowerGenerator,
+    private val source: PowerSource,
     private val listenable: SimpleListenable = SimpleListenable()
-) : PowerGenerator, SnapshotParticipant<Long>(), Listenable by listenable {
+) : PowerSource, SnapshotParticipant<Long>(), Listenable by listenable {
 
     init {
         source.addListener { listenable.listen() }
@@ -52,7 +51,7 @@ open class ReloadingGenerator(
         val request = min(_capacity - amount, reloadAmount)
         if (request <= 0) return false
         withOuterTransaction { tx ->
-            val extracted = source.extract(INSTANCE, request, tx)
+            val extracted = source.extract(PowerVariant, request, tx)
             if (extracted > 0) {
                 _amount += extracted
                 tx.commit()

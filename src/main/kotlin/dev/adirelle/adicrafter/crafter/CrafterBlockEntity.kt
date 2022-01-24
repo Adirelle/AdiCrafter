@@ -4,7 +4,7 @@ package dev.adirelle.adicrafter.crafter
 
 import dev.adirelle.adicrafter.crafter.api.Crafter
 import dev.adirelle.adicrafter.crafter.api.CrafterDataAccessor
-import dev.adirelle.adicrafter.crafter.api.power.PowerGenerator
+import dev.adirelle.adicrafter.crafter.api.power.PowerSource
 import dev.adirelle.adicrafter.crafter.api.recipe.Recipe
 import dev.adirelle.adicrafter.crafter.api.recipe.RecipeFlags
 import dev.adirelle.adicrafter.crafter.api.storage.StorageProvider
@@ -39,7 +39,7 @@ open class CrafterBlockEntity(
     blockEntityType: BlockEntityType<CrafterBlockEntity>,
     pos: BlockPos,
     state: BlockState,
-    val powerGenerator: PowerGenerator,
+    val powerSource: PowerSource,
     private val recipeFactoryProvider: (RecipeFlags) -> Recipe.Factory,
     private val storageProviderProvider: (World?, BlockPos) -> StorageProvider
 ) :
@@ -85,7 +85,7 @@ open class CrafterBlockEntity(
     private var bufferedCrafter = BufferedCrafter(::crafter, ::markForecastDirty)
 
     init {
-        powerGenerator.addListener(::markForecastDirty)
+        powerSource.addListener(::markForecastDirty)
     }
 
     private var dirtyForecast = false
@@ -119,8 +119,8 @@ open class CrafterBlockEntity(
     }
 
     override fun writeScreenOpeningData(player: ServerPlayerEntity, buf: PacketByteBuf) {
-        buf.writeBoolean(powerGenerator.hasPowerBar())
-        buf.writeBoolean(powerGenerator.asInventory() != null)
+        buf.writeBoolean(powerSource.hasPowerBar())
+        buf.writeBoolean(powerSource.asInventory() != null)
         recipeFlags.writeToPacket(buf)
     }
 
@@ -134,7 +134,7 @@ open class CrafterBlockEntity(
         grid.readFromNbt(nbt.getList(GRID_NBT_KEY, NbtType.COMPOUND))
         bufferedCrafter.readFromNbt(nbt.getCompound(CONTENT_NBT_KEY))
         recipeFlags = RecipeFlags.fromNbt(nbt.getInt(FLAGS_NBT_KEY))
-        powerGenerator.readFromNbt(nbt.getCompound(GENERATOR_NBT_KEY))
+        powerSource.readFromNbt(nbt.getCompound(GENERATOR_NBT_KEY))
     }
 
     override fun writeNbt(nbt: NbtCompound) {
@@ -143,12 +143,12 @@ open class CrafterBlockEntity(
         nbt.put(GRID_NBT_KEY, grid.toNbt())
         nbt.put(CONTENT_NBT_KEY, bufferedCrafter.toNbt())
         nbt.put(FLAGS_NBT_KEY, recipeFlags.toNbt())
-        nbt.put(GENERATOR_NBT_KEY, powerGenerator.toNbt())
+        nbt.put(GENERATOR_NBT_KEY, powerSource.toNbt())
     }
 
     override fun tick(world: World): Boolean {
         val crafterUpdated = updateCrafter()
-        val powerUpdated = powerGenerator.tick(world)
+        val powerUpdated = powerSource.tick(world)
         val forecastUpdated = updateForecast()
         if (crafterUpdated || powerUpdated || forecastUpdated) {
             updateScreenHandlers()
@@ -161,7 +161,7 @@ open class CrafterBlockEntity(
     fun dropContent() {
         val world = world as? ServerWorld ?: return
         bufferedCrafter.dropBuffer(world, pos.up())
-        ItemScatterer.spawn(world, pos.up(), powerGenerator.asInventory())
+        ItemScatterer.spawn(world, pos.up(), powerSource.asInventory())
     }
 
     private fun updateScreenHandlers() {
@@ -241,10 +241,10 @@ open class CrafterBlockEntity(
             }
 
         override val fuel: Inventory? =
-            powerGenerator.asInventory()
+            powerSource.asInventory()
 
         override val hasPowerBar: Boolean =
-            powerGenerator.hasPowerBar()
+            powerSource.hasPowerBar()
 
         override val recipeFlags: Property =
             property(
@@ -256,10 +256,10 @@ open class CrafterBlockEntity(
             property { this@CrafterBlockEntity.missingIngredients.toInt() }
 
         override val powerAmount: Property =
-            property { powerGenerator.amount.toInt() }
+            property { powerSource.amount.toInt() }
 
         override val powerCapacity: Property =
-            property { powerGenerator.capacity.toInt() }
+            property { powerSource.capacity.toInt() }
 
         override fun onScreenHandlerClosed(handler: ScreenHandler) {
             this@CrafterBlockEntity.onScreenHandlerClosed(handler)

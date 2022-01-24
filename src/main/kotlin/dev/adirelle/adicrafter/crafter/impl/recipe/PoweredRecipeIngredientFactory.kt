@@ -12,7 +12,7 @@ class PoweredRecipeIngredientFactory(
     cost: Long
 ) : IngredientFactory {
 
-    private val powerIngredient = ExactIngredient(PowerVariant.INSTANCE, cost)
+    private val powerIngredient = ExactIngredient(PowerVariant, cost)
 
     override fun create(recipe: CraftingRecipe, grid: List<ItemStack>): Collection<Ingredient<*>> =
         buildList {

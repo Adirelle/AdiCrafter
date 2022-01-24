@@ -2,11 +2,11 @@
 
 package dev.adirelle.adicrafter.crafter
 
-import dev.adirelle.adicrafter.crafter.api.power.PowerGenerator
+import dev.adirelle.adicrafter.crafter.api.power.PowerSource
 import dev.adirelle.adicrafter.crafter.api.storage.ResourceType
 import dev.adirelle.adicrafter.crafter.api.storage.SingleTypeStorageProvider
 import dev.adirelle.adicrafter.crafter.api.storage.StorageProvider
-import dev.adirelle.adicrafter.crafter.impl.power.DefaultGenerator
+import dev.adirelle.adicrafter.crafter.impl.power.DefaultSource
 import dev.adirelle.adicrafter.crafter.impl.power.FueledGenerator
 import dev.adirelle.adicrafter.crafter.impl.power.IllimitedGenerator
 import dev.adirelle.adicrafter.crafter.impl.power.RedstoneGenerator
@@ -29,9 +29,9 @@ class CrafterFactory(
     val basic: BlockFactory by lazy {
         if (config.basic.enabled)
             object : AbstractBlockFactory() {
-                override fun createGenerator(): PowerGenerator =
+                override fun createGenerator(): PowerSource =
                     with(config.basic) {
-                        if (usePower) DefaultGenerator(capacity, reloadAmount, reloadPeriod)
+                        if (usePower) DefaultSource(capacity, reloadAmount, reloadPeriod)
                         else IllimitedGenerator
                     }
             }
@@ -41,7 +41,7 @@ class CrafterFactory(
     val fueled: BlockFactory by lazy {
         if (config.fueled.enabled)
             object : AbstractBlockFactory() {
-                override fun createGenerator(): PowerGenerator =
+                override fun createGenerator(): PowerSource =
                     with(config.fueled) {
                         FueledGenerator(capacity, reloadAmount, reloadPeriod)
                     }
@@ -51,7 +51,7 @@ class CrafterFactory(
     val redstone: BlockFactory by lazy {
         if (config.redstone.enabled)
             object : AbstractBlockFactory() {
-                override fun createGenerator(): PowerGenerator =
+                override fun createGenerator(): PowerSource =
                     with(config.redstone) {
                         RedstoneGenerator(powerPerDust)
                     }
@@ -77,7 +77,7 @@ class CrafterFactory(
         final override val block = CrafterBlock(::createBlockEntity)
         final override val blockEntityType = BlockEntityType(::createBlockEntity, setOf(block), null)
 
-        protected abstract fun createGenerator(): PowerGenerator
+        protected abstract fun createGenerator(): PowerSource
 
         private fun createBlockEntity(pos: BlockPos, state: BlockState): CrafterBlockEntity {
             val generator = createGenerator()
@@ -88,14 +88,14 @@ class CrafterFactory(
         private fun createStorageProvider(
             world: World?,
             pos: BlockPos,
-            powerGenerator: PowerGenerator
+            powerSource: PowerSource
         ): StorageProvider =
             if (world is ServerWorld)
                 StorageCompoundProvider(
                     buildMap {
                         put(ResourceType.ITEM, NeighborStorageProvider(ItemStorage.SIDED, world, pos))
                         put(ResourceType.FLUID, NeighborStorageProvider(FluidStorage.SIDED, world, pos))
-                        put(ResourceType.POWER, SingleTypeStorageProvider.of(SingleViewStorage.of(powerGenerator)))
+                        put(ResourceType.POWER, SingleTypeStorageProvider.of(SingleViewStorage.of(powerSource)))
                     }
                 )
             else

@@ -4,7 +4,7 @@ import dev.adirelle.adicrafter.AdiCrafter
 import dev.adirelle.adicrafter.crafter.CrafterFactory.AbstractBlockFactory
 import dev.adirelle.adicrafter.crafter.CrafterFactory.BlockFactory
 import dev.adirelle.adicrafter.crafter.CrafterFeature
-import dev.adirelle.adicrafter.crafter.api.power.PowerGenerator
+import dev.adirelle.adicrafter.crafter.api.power.PowerSource
 import dev.adirelle.adicrafter.utils.ModFeature
 import team.reborn.energy.api.EnergyStorage
 
@@ -14,8 +14,8 @@ object EnergyFeature : ModFeature(AdiCrafter) {
 
     val factory = if (config.enabled)
         object : AbstractBlockFactory() {
-            override fun createGenerator(): PowerGenerator =
-                EnergyGenerator(config.capacity, config.transferRate)
+            override fun createGenerator(): PowerSource =
+                EnergySource(config.capacity, config.transferRate)
         }
     else
         BlockFactory.Disabled
@@ -28,7 +28,7 @@ object EnergyFeature : ModFeature(AdiCrafter) {
             CrafterFeature.registerBlock(id("energized_crafter"), block, ENERGY_CRAFTER_ENTITY_TYPE!!)
 
             EnergyStorage.SIDED.registerForBlockEntity(
-                { blockEntity, _ -> blockEntity.powerGenerator as? EnergyStorage },
+                { blockEntity, _ -> blockEntity.powerSource as? EnergyStorage },
                 ENERGY_CRAFTER_ENTITY_TYPE
             )
 

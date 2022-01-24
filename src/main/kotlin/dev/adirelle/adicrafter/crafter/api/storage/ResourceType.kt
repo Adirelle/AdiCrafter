@@ -19,7 +19,7 @@ interface ResourceType<T : TransferVariant<*>> {
 
         val ITEM = ResourceTypeImpl(ItemVariant::class.java, ItemVariant.blank())
         val FLUID = ResourceTypeImpl(FluidVariant::class.java, FluidVariant.blank())
-        val POWER = ResourceTypeImpl(PowerVariant::class.java, PowerVariant.INSTANCE)
+        val POWER = ResourceTypeImpl(PowerVariant::class.java, PowerVariant)
 
         fun <T : TransferVariant<*>> of(resource: T): ResourceType<T> {
             val type: ResourceType<*> = when {
