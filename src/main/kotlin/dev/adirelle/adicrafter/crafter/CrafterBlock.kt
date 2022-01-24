@@ -80,22 +80,21 @@ open class CrafterBlock(
         hand: Hand,
         direction: Direction
     ): Boolean {
-        if (!world.isClient &&
-            !player.isSpectator &&
-            player.abilities.allowModifyWorld &&
-            player.getStackInHand(hand).isEmpty
+        if (world.isClient ||
+            player.isSpectator || !player.abilities.allowModifyWorld || !player.getStackInHand(hand).isEmpty
         ) {
-            (world.getBlockEntity(pos) as? CrafterBlockEntity)?.let { blockEntity ->
-                val stack = blockEntity.dataAccessor.craft()
-                val unit = Vec3d(direction.unitVector)
-                val vpos = Vec3d.ofCenter(pos, 0.5).add(unit.multiply(0.5))
-                val vel = vpos.relativize(player.eyePos).normalize()
-                val itemEntity = ItemEntity(world, vpos.x, vpos.y, vpos.z, stack, vel.x, vel.y, vel.z)
-                world.spawnEntity(itemEntity)
-                return true
-            }
+            return false
         }
-        return false
+        val blockEntity = world.getBlockEntity(pos) as? CrafterBlockEntity ?: return false
+
+        val stack = blockEntity.dataAccessor.craft()
+        val unit = Vec3d(direction.unitVector)
+        val vpos = Vec3d.ofCenter(pos, 0.5).add(unit.multiply(0.5))
+        val vel = vpos.relativize(player.eyePos).normalize()
+        val itemEntity = ItemEntity(world, vpos.x, vpos.y, vpos.z, stack, vel.x, vel.y, vel.z)
+        world.spawnEntity(itemEntity)
+
+        return true
     }
 
     override fun getRenderType(state: BlockState?) = BlockRenderType.MODEL
