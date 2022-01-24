@@ -9,10 +9,13 @@ import net.fabricmc.loader.api.FabricLoader
 
 @Serializable
 data class Config(
+    val version: Int = 0,
     val crafter: CrafterConfig = CrafterConfig()
 ) {
 
     companion object {
+
+        const val CURRENT_VERSION = 1
 
         private val logger by lazyLogger(Config::class.java)
 
@@ -37,7 +40,11 @@ data class Config(
             }
 
         fun loadOrCreate(): Config {
-            val config = if (configFile.exists()) load() else Config()
+            var config = if (configFile.exists()) load() else Config()
+            if (config.version < CURRENT_VERSION) {
+                logger.warn("loaded previous version of configuration, reseting to default")
+                config = Config()
+            }
             config.save()
             return config
         }
