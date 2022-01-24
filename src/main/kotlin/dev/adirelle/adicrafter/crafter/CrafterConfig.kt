@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class CrafterConfig(
     val craftPowerCost: Long = 160,
+    val updatePeriod: Long = 4,
     val basic: BasicConfig = BasicConfig(),
     val fueled: FueledConfig = FueledConfig(),
     val redstone: RedstoneConfig = RedstoneConfig(),

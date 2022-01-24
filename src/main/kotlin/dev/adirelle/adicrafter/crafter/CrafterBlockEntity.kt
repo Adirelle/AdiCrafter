@@ -2,6 +2,7 @@
 
 package dev.adirelle.adicrafter.crafter
 
+import dev.adirelle.adicrafter.AdiCrafter
 import dev.adirelle.adicrafter.crafter.api.Crafter
 import dev.adirelle.adicrafter.crafter.api.CrafterDataAccessor
 import dev.adirelle.adicrafter.crafter.api.Removeable
@@ -56,15 +57,13 @@ open class CrafterBlockEntity(
 
     companion object {
 
+        private val forecastUpdatePeriod by lazy { AdiCrafter.config.crafter.updatePeriod }
+
         private const val GRID_NBT_KEY = "Grid"
         private const val CONTENT_NBT_KEY = "Content"
         private const val FLAGS_NBT_KEY = "Flags"
         private const val GENERATOR_NBT_KEY = "Generator"
-
-        private const val updatePeriod = 4
     }
-
-    private val updateOn = state.hashCode() % updatePeriod
 
     val dataAccessor: CrafterDataAccessor = DataAccessor()
 
@@ -80,7 +79,7 @@ open class CrafterBlockEntity(
     private var recipe: Recipe = Recipe.EMPTY
     private var crafter: Crafter = Crafter.EMPTY
 
-    private var dirtyForecast = true
+    private var forecastTimeout = 0L
     private var forecast = 0L
     private val missingIngredients = BitArray.of(Grid.SIZE)
 
@@ -134,7 +133,7 @@ open class CrafterBlockEntity(
     }
 
     private fun markForecastDirty() {
-        dirtyForecast = true
+        forecastTimeout = 0
     }
 
     override fun onCrafterUpdate() {
@@ -148,7 +147,7 @@ open class CrafterBlockEntity(
     override fun tick(world: World): Boolean {
         val crafterUpdated = updateCrafter()
         val powerUpdated = powerSource.tick(world)
-        val forecastUpdated = updateForecast(world.time.toInt() % updatePeriod == updateOn)
+        val forecastUpdated = updateForecast()
         if (crafterUpdated || powerUpdated || forecastUpdated) {
             updateScreenHandlers()
             markDirty()
@@ -183,11 +182,11 @@ open class CrafterBlockEntity(
         return true
     }
 
-    private fun updateForecast(force: Boolean = false): Boolean {
-        if (!force && !dirtyForecast) return false
+    private fun updateForecast(): Boolean {
+        if (--forecastTimeout > 0) return false
 
         forecast = with(recipe.output) { crafter.simulateExtract(resource, amount, null) }
-        dirtyForecast = false
+        forecastTimeout = forecastUpdatePeriod
         updateMissingIngredients()
 
         return true
