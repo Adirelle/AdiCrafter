@@ -6,7 +6,6 @@ import dev.adirelle.adicrafter.crafter.api.recipe.Ingredient
 import dev.adirelle.adicrafter.crafter.api.recipe.IngredientFactory
 import dev.adirelle.adicrafter.crafter.api.recipe.ItemIngredient
 import dev.adirelle.adicrafter.crafter.api.storage.StorageProvider
-import dev.adirelle.adicrafter.utils.extensions.toItemString
 import dev.adirelle.adicrafter.utils.extensions.toVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.TransferVariant
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
@@ -20,7 +19,7 @@ class ExactIngredient<T : TransferVariant<*>>(
     override fun extractFrom(provider: StorageProvider, maxAmount: Long, tx: TransactionContext) =
         provider.getStorage(resource).extract(resource, maxAmount, tx)
 
-    override fun toString() = "exactly(%d %s)".format(amount, resource.toItemString())
+    override fun toString() = "exactly(%d %s)".format(amount, resource.`object`.toString())
 
     companion object Factory : IngredientFactory.ItemIngredientFactory {
 

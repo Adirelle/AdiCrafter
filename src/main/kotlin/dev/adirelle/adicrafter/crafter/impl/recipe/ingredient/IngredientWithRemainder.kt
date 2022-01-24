@@ -5,7 +5,6 @@ package dev.adirelle.adicrafter.crafter.impl.recipe.ingredient
 import dev.adirelle.adicrafter.crafter.api.recipe.ItemIngredient
 import dev.adirelle.adicrafter.crafter.api.storage.ResourceType
 import dev.adirelle.adicrafter.crafter.api.storage.StorageProvider
-import dev.adirelle.adicrafter.utils.toItemString
 import dev.adirelle.adicrafter.utils.withNestedTransaction
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
@@ -42,5 +41,5 @@ class IngredientWithRemainder(
         return Pair(extracted, putBack)
     }
 
-    override fun toString() = "%s->%s".format(consumed.toString(), remainderVariant.toItemString())
+    override fun toString() = "%s->%s".format(consumed.toString(), remainderVariant.item.toString())
 }
