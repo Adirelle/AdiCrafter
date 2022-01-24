@@ -15,7 +15,6 @@ import dev.adirelle.adicrafter.crafter.impl.recipe.FactoryImpl
 import dev.adirelle.adicrafter.crafter.impl.storage.NeighborStorageProvider
 import dev.adirelle.adicrafter.crafter.impl.storage.StorageCompoundProvider
 import dev.adirelle.adicrafter.utils.storage.SingleViewStorage
-import io.github.cottonmc.cotton.gui.impl.client.LibGuiClient.logger
 import net.fabricmc.fabric.api.transfer.v1.fluid.FluidStorage
 import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage
 import net.minecraft.block.BlockState
@@ -83,11 +82,7 @@ class CrafterFactory(
         private fun createBlockEntity(pos: BlockPos, state: BlockState): CrafterBlockEntity {
             lateinit var blockEntity: CrafterBlockEntity
 
-            val generator = createGenerator {
-                logger.info("onPowerChanged from factory")
-                blockEntity.onPowerChanged()
-            }
-
+            val generator = createGenerator { blockEntity.onPowerChanged() }
             blockEntity = CrafterBlockEntity(blockEntityType, pos, state, generator, FactoryImpl::with)
             { world, _ -> createStorageProvider(world, pos, generator) }
 
