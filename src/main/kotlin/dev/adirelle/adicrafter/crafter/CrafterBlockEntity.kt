@@ -58,7 +58,11 @@ open class CrafterBlockEntity(
         private const val CONTENT_NBT_KEY = "Content"
         private const val FLAGS_NBT_KEY = "Flags"
         private const val GENERATOR_NBT_KEY = "Generator"
+
+        private const val updatePeriod = 4
     }
+
+    private val updateOn = state.hashCode() % updatePeriod
 
     val dataAccessor: CrafterDataAccessor = DataAccessor()
 
@@ -142,7 +146,7 @@ open class CrafterBlockEntity(
     override fun tick(world: World): Boolean {
         val crafterUpdated = updateCrafter()
         val powerUpdated = powerSource.tick(world)
-        val forecastUpdated = updateForecast()
+        val forecastUpdated = updateForecast(world.time.toInt() % updatePeriod == updateOn)
         if (crafterUpdated || powerUpdated || forecastUpdated) {
             updateScreenHandlers()
             markDirty()
@@ -177,8 +181,8 @@ open class CrafterBlockEntity(
         return true
     }
 
-    private fun updateForecast(): Boolean {
-        if (!dirtyForecast) return false
+    private fun updateForecast(force: Boolean = false): Boolean {
+        if (!force && !dirtyForecast) return false
 
         forecast = with(recipe.output) { crafter.simulateExtract(resource, amount, null) }
         dirtyForecast = false
