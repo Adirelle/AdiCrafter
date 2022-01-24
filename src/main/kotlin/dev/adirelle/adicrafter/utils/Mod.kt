@@ -46,12 +46,12 @@ interface SidedModInitalizer : ModInitializer, ClientModInitializer, DedicatedSe
     }
 }
 
-open class Mod(val MOD_ID: String) : SidedModInitalizer {
+open class Mod(val name: String, val MOD_ID: String) : SidedModInitalizer {
 
-    final override val LOGGER = LogManager.getLogger(MOD_ID)!!
+    final override val LOGGER = LogManager.getLogger(name)!!
 
     init {
-        LOGGER.debug("initializing $MOD_ID")
+        LOGGER.debug("initializing $name")
     }
 
     fun feature(feature: ModFeature) {
@@ -70,7 +70,7 @@ open class Mod(val MOD_ID: String) : SidedModInitalizer {
         LOGGER.debug("feature $feature initialized")
     }
 
-    override fun toString() = MOD_ID
+    override fun toString() = name
 }
 
 open class ModFeature(mod: Mod) : SidedModInitalizer {

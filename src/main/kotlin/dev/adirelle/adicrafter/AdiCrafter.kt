@@ -5,7 +5,7 @@ import dev.adirelle.adicrafter.crafter.CrafterFeature
 import dev.adirelle.adicrafter.utils.Mod
 import net.fabricmc.loader.api.FabricLoader
 
-object AdiCrafter : Mod("adicrafter") {
+object AdiCrafter : Mod("AdiCrafter", "adicrafter") {
 
     val config = Config.loadOrCreate()
 
