@@ -9,6 +9,7 @@ import dev.adirelle.adicrafter.utils.withOuterTransaction
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 import net.fabricmc.fabric.api.transfer.v1.transaction.base.SnapshotParticipant
 import net.minecraft.nbt.NbtCompound
+import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 import kotlin.math.min
 
@@ -38,6 +39,10 @@ open class ReloadingGenerator(
     override fun tick(world: World): Boolean {
         val sourceChanged = source.tick(world)
         return tickInternal() || sourceChanged
+    }
+
+    override fun onRemoved(world: World, pos: BlockPos) {
+        source.onRemoved(world, pos)
     }
 
     private fun tickInternal(): Boolean {
