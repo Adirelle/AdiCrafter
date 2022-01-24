@@ -6,8 +6,10 @@ import dev.adirelle.adicrafter.crafter.impl.Grid
 import dev.adirelle.adicrafter.utils.storage.NullStorage
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage
+import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 import net.minecraft.inventory.Inventory
 import net.minecraft.inventory.SimpleInventory
+import net.minecraft.item.ItemStack
 import net.minecraft.screen.Property
 import net.minecraft.screen.ScreenHandler
 
@@ -30,6 +32,11 @@ interface CrafterDataAccessor {
 
     fun onScreenHandlerClosed(handler: ScreenHandler)
 
+    fun craft(amount: Int, tx: TransactionContext? = null): ItemStack
+
+    fun craft(tx: TransactionContext? = null): ItemStack =
+        craft(result.getStack(0).count, tx)
+
     class Dummy(
         override val hasPowerBar: Boolean,
         hasGeneratorInventory: Boolean
@@ -49,5 +56,7 @@ interface CrafterDataAccessor {
         override val powerCapacity: Property = Property.create()
 
         override fun onScreenHandlerClosed(handler: ScreenHandler) {}
+
+        override fun craft(amount: Int, tx: TransactionContext?): ItemStack = ItemStack.EMPTY
     }
 }

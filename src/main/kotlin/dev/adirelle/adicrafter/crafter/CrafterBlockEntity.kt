@@ -16,6 +16,7 @@ import dev.adirelle.adicrafter.utils.*
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage
+import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 import net.fabricmc.fabric.api.util.NbtType
 import net.minecraft.block.BlockState
 import net.minecraft.block.entity.BlockEntity
@@ -23,6 +24,7 @@ import net.minecraft.block.entity.BlockEntityType
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.entity.player.PlayerInventory
 import net.minecraft.inventory.Inventory
+import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NbtCompound
 import net.minecraft.network.PacketByteBuf
 import net.minecraft.screen.Property
@@ -259,5 +261,12 @@ open class CrafterBlockEntity(
         override fun onScreenHandlerClosed(handler: ScreenHandler) {
             this@CrafterBlockEntity.onScreenHandlerClosed(handler)
         }
+
+        override fun craft(amount: Int, tx: TransactionContext?): ItemStack =
+            withNestedTransaction(tx) { nested ->
+                val extracted = crafter.extract(recipe.output.resource, amount.toLong(), nested)
+                nested.commit()
+                recipe.output.resource.toStack(extracted.toInt())
+            }
     }
 }
