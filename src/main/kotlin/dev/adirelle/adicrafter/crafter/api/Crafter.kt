@@ -25,7 +25,8 @@ interface Crafter : SingleViewStorage<ItemVariant>, ReadonlyInventory, NbtSerial
         }
     }
 
-    override fun canPlayerUse(player: PlayerEntity) = false
+    override fun canPlayerUse(player: PlayerEntity) =
+        !player.isSpectator && player.abilities.allowModifyWorld
 
     fun findIngredientFor(item: ItemConvertible): Optional<ItemIngredient>
 

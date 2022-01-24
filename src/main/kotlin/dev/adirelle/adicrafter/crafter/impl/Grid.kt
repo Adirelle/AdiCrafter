@@ -98,6 +98,6 @@ class Grid private constructor(
     }
 
     override fun canPlayerUse(player: PlayerEntity) =
-        true
+        !player.isSpectator && player.abilities.allowModifyWorld
 
 }
