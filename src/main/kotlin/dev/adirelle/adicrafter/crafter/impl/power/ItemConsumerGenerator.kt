@@ -15,9 +15,6 @@ import net.minecraft.inventory.SimpleInventory
 import net.minecraft.item.Item
 import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NbtCompound
-import net.minecraft.util.ItemScatterer
-import net.minecraft.util.math.BlockPos
-import net.minecraft.world.World
 import kotlin.math.max
 import kotlin.math.min
 
@@ -41,10 +38,12 @@ open class ItemConsumerGenerator(
             }
         }
 
-    override fun onRemoved(world: World, pos: BlockPos) {
-        ItemScatterer.spawn(world, pos, inventory)
-    }
-    
+    override fun getDroppedStacks(): List<ItemStack> =
+        if (inventory.isEmpty)
+            emptyList()
+        else
+            inventory.clearToList()
+
     private val storage = inventory.asStorage()
 
     private var stack: ItemStack

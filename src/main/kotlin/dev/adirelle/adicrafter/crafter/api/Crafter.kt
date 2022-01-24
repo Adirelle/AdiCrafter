@@ -3,6 +3,7 @@
 package dev.adirelle.adicrafter.crafter.api
 
 import dev.adirelle.adicrafter.crafter.api.recipe.ItemIngredient
+import dev.adirelle.adicrafter.utils.Droppable
 import dev.adirelle.adicrafter.utils.NbtSerializable
 import dev.adirelle.adicrafter.utils.ReadonlyInventory
 import dev.adirelle.adicrafter.utils.storage.SingleViewStorage
@@ -14,7 +15,7 @@ import net.minecraft.item.ItemStack
 import org.apache.logging.log4j.LogManager
 import java.util.*
 
-interface Crafter : SingleViewStorage<ItemVariant>, ReadonlyInventory, NbtSerializable, Removeable {
+interface Crafter : SingleViewStorage<ItemVariant>, ReadonlyInventory, NbtSerializable, Droppable {
 
     override fun size() = 1
     override fun isEmpty() = isResourceBlank

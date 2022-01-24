@@ -5,7 +5,6 @@ package dev.adirelle.adicrafter.crafter
 import dev.adirelle.adicrafter.AdiCrafter
 import dev.adirelle.adicrafter.crafter.api.Crafter
 import dev.adirelle.adicrafter.crafter.api.CrafterDataAccessor
-import dev.adirelle.adicrafter.crafter.api.Removeable
 import dev.adirelle.adicrafter.crafter.api.power.PowerSource
 import dev.adirelle.adicrafter.crafter.api.recipe.Recipe
 import dev.adirelle.adicrafter.crafter.api.recipe.RecipeFlags
@@ -25,6 +24,7 @@ import net.minecraft.block.entity.BlockEntityType
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.entity.player.PlayerInventory
 import net.minecraft.inventory.Inventory
+import net.minecraft.item.BlockItem
 import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NbtCompound
 import net.minecraft.network.PacketByteBuf
@@ -34,7 +34,9 @@ import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.text.Text
 import net.minecraft.text.TranslatableText
+import net.minecraft.util.ItemScatterer
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.Vec3d
 import net.minecraft.util.registry.Registry
 import net.minecraft.world.World
 
@@ -50,7 +52,7 @@ open class CrafterBlockEntity(
     ExtendedScreenHandlerFactory,
     PowerSource.Listener,
     Crafter.Listener,
-    Removeable,
+    Droppable,
     Tickable {
 
     private val logger by lazyLogger
@@ -66,6 +68,8 @@ open class CrafterBlockEntity(
     }
 
     val dataAccessor: CrafterDataAccessor = DataAccessor()
+
+    val id by lazy { BlockEntityType.getId(this.type)!! }
 
     private val grid = Grid.create(::markCrafterDirty)
 
@@ -87,10 +91,7 @@ open class CrafterBlockEntity(
 
     private val storageProvider by lazy { storageProviderProvider(world, pos) }
 
-    private val titleKey by lazy {
-        val id = Registry.BLOCK_ENTITY_TYPE.getId(blockEntityType)
-        "block.adicrafter.${id?.path ?: "crafter"}"
-    }
+    private val titleKey by lazy { "block.adicrafter.${id.path}" }
 
     override fun getDisplayName(): Text = TranslatableText(titleKey)
 
@@ -156,10 +157,15 @@ open class CrafterBlockEntity(
         return false
     }
 
-    override fun onRemoved(world: World, pos: BlockPos) {
-        crafter.onRemoved(world, pos)
-        powerSource.onRemoved(world, pos)
-    }
+    override fun getDroppedStacks(): List<ItemStack> =
+        buildList {
+            addAll(crafter.getDroppedStacks())
+            addAll(powerSource.getDroppedStacks())
+
+            val item = ItemStack(Registry.ITEM[id])
+            BlockItem.setBlockEntityNbt(item, type, createNbt())
+            add(item)
+        }
 
     private fun updateScreenHandlers() {
         openScreenHandlers.forEach { it.sendContentUpdates() }
@@ -168,7 +174,9 @@ open class CrafterBlockEntity(
     private fun updateCrafter(): Boolean {
         if (!dirtyCrafter) return false
         val world = world as? ServerWorld ?: return false
-        crafter.onRemoved(world, pos.up())
+
+        scatterItems(crafter.getDroppedStacks())
+
         dirtyCrafter = false
 
         recipe = recipeFactoryProvider(recipeFlags).create(world, grid.asList())
@@ -180,6 +188,13 @@ open class CrafterBlockEntity(
         markForecastDirty()
 
         return true
+    }
+
+    private fun scatterItems(stacks: Iterable<ItemStack>) {
+        val pos = Vec3d.ofCenter(pos.up())
+        stacks.forEach {
+            ItemScatterer.spawn(world, pos.x, pos.y, pos.z, it)
+        }
     }
 
     private fun updateForecast(): Boolean {

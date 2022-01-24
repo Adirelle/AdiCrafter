@@ -13,6 +13,9 @@ import net.minecraft.block.entity.BlockEntityTicker
 import net.minecraft.block.entity.BlockEntityType
 import net.minecraft.entity.ItemEntity
 import net.minecraft.entity.player.PlayerEntity
+import net.minecraft.item.ItemStack
+import net.minecraft.loot.context.LootContext.Builder
+import net.minecraft.loot.context.LootContextParameters
 import net.minecraft.util.ActionResult
 import net.minecraft.util.Hand
 import net.minecraft.util.hit.BlockHitResult
@@ -42,22 +45,6 @@ open class CrafterBlock(
         else
             null
 
-    override fun onStateReplaced(
-        state: BlockState,
-        world: World,
-        pos: BlockPos,
-        newState: BlockState,
-        moved: Boolean
-    ) {
-        if (!state.isOf(newState.block)) {
-            (world.takeUnless { it.isClient }
-                ?.getBlockEntity(pos) as? CrafterBlockEntity)
-                ?.onRemoved(world, pos)
-        }
-        @Suppress("DEPRECATION")
-        super.onStateReplaced(state, world, pos, newState, moved)
-    }
-
     override fun onUse(
         state: BlockState,
         world: World,
@@ -71,6 +58,12 @@ open class CrafterBlock(
         }
         return ActionResult.SUCCESS
     }
+
+    override fun getDroppedStacks(state: BlockState, builder: Builder): MutableList<ItemStack> =
+        (builder.getNullable(LootContextParameters.BLOCK_ENTITY) as? CrafterBlockEntity)
+            ?.getDroppedStacks()
+            ?.toMutableList()
+            ?: super.getDroppedStacks(state, builder)
 
     override fun onAttackInteraction(
         state: BlockState,

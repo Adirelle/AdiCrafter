@@ -8,8 +8,8 @@ import dev.adirelle.adicrafter.crafter.api.power.PowerVariant
 import dev.adirelle.adicrafter.utils.withOuterTransaction
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 import net.fabricmc.fabric.api.transfer.v1.transaction.base.SnapshotParticipant
+import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NbtCompound
-import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 import kotlin.math.min
 
@@ -41,9 +41,8 @@ open class ReloadingGenerator(
         return tickInternal() || sourceChanged
     }
 
-    override fun onRemoved(world: World, pos: BlockPos) {
-        source.onRemoved(world, pos)
-    }
+    override fun getDroppedStacks(): List<ItemStack> =
+        source.getDroppedStacks()
 
     private fun tickInternal(): Boolean {
         val request = min(_capacity - amount, reloadRate)

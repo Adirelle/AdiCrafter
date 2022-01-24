@@ -8,9 +8,6 @@ import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 import net.fabricmc.fabric.api.transfer.v1.transaction.base.SnapshotParticipant
 import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NbtCompound
-import net.minecraft.util.ItemScatterer
-import net.minecraft.util.math.BlockPos
-import net.minecraft.world.World
 
 class BufferedCrafter(
     private val backing: Crafter,
@@ -19,19 +16,13 @@ class BufferedCrafter(
 
     private var buffer: ItemStack = ItemStack.EMPTY
 
-    override fun onRemoved(world: World, pos: BlockPos) {
-        if (buffer.isEmpty) return
-        pos.up().let { dropPos ->
-            ItemScatterer.spawn(
-                world,
-                dropPos.x.toDouble(),
-                dropPos.y.toDouble(),
-                dropPos.z.toDouble(),
-                buffer
-            )
-        }
-        buffer = ItemStack.EMPTY
-    }
+    override fun getDroppedStacks(): List<ItemStack> =
+        if (buffer.isEmpty)
+            emptyList()
+        else
+            listOf(buffer).also {
+                buffer = ItemStack.EMPTY
+            }
 
     override fun readFromNbt(nbt: NbtCompound) {
         backing.readFromNbt(nbt)
