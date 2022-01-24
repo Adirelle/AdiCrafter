@@ -10,28 +10,27 @@ import dev.adirelle.adicrafter.utils.extensions.asStorage
 import dev.adirelle.adicrafter.utils.extensions.get
 import dev.adirelle.adicrafter.utils.inventory.ListenableInventory
 import dev.adirelle.adicrafter.utils.inventory.SimpleListenableInventory
-import dev.adirelle.adicrafter.utils.lazyLogger
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 import net.fabricmc.fabric.api.transfer.v1.transaction.base.SnapshotParticipant
 import net.fabricmc.fabric.api.util.NbtType
 import net.minecraft.item.Item
 import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NbtCompound
-import java.util.*
+import kotlin.math.max
 import kotlin.math.min
 
 open class ItemConsumerGenerator(
-    private val itemPower: (Item) -> Optional<Long>,
+    private val powerPerItem: Map<Item, Long>,
     private val listenable: SimpleListenable = SimpleListenable()
 ) : PowerSource, Listenable by listenable, SnapshotParticipant<Long>() {
 
-    private val logger by lazyLogger
+    private val maxPowerPerItem = powerPerItem.values.maxOf { it }
 
     private val inventory: SimpleListenableInventory =
         object : SimpleListenableInventory(1) {
 
             override fun isValid(slot: Int, stack: ItemStack) =
-                super.isValid(slot, stack) && itemPower(stack.item).isPresent
+                super.isValid(slot, stack) && stack.item in powerPerItem
         }
 
     private val storage = inventory.asStorage()
@@ -46,14 +45,18 @@ open class ItemConsumerGenerator(
         inventory.addListener(listenable)
     }
 
-    override fun hasPowerBar() = false
-    override fun getAmount() = itemPower(stack.item).map { it * storage[0].amount }.orElse(0L)
-    override fun getCapacity() = itemPower(stack.item).map { it * storage[0].capacity }.orElse(0L)
+    override fun hasPowerBar() = true
+    override fun getAmount() = max(buffer, powerPerItem[stack.item] ?: 0L)
+    override fun getCapacity() = maxPowerPerItem
     override fun asInventory(): ListenableInventory = inventory
 
     override fun extract(resource: PowerVariant, maxAmount: Long, tx: TransactionContext): Long {
         if (maxAmount > buffer) {
-            consumeItem(maxAmount - buffer, tx)
+            val consumed = consumeItem(maxAmount - buffer, tx)
+            if (consumed > 0) {
+                updateSnapshots(tx)
+                buffer += consumed
+            }
         }
         val extracted = min(maxAmount, buffer)
         if (extracted > 0L) {
@@ -63,20 +66,15 @@ open class ItemConsumerGenerator(
         return extracted
     }
 
-    private fun consumeItem(amount: Long, tx: TransactionContext) {
-        itemPower(stack.item).ifPresent { powerPerItem ->
-            val request = min((amount + powerPerItem - 1) / powerPerItem, storage[0].amount)
-            val extracted = storage.extract(storage.slots[0].resource, request, tx)
-            if (extracted > 0) {
-                updateSnapshots(tx)
-                buffer += powerPerItem * extracted
-            }
-        }
+    private fun consumeItem(amount: Long, tx: TransactionContext): Long {
+        val powerPerItem = powerPerItem[stack.item] ?: return 0
+        val request = min((amount + powerPerItem - 1) / powerPerItem, storage[0].amount)
+        return powerPerItem * storage.extract(storage.slots[0].resource, request, tx)
     }
 
     override fun readFromNbt(nbt: NbtCompound) {
         inventory.readNbtList(nbt.getList("inventory", NbtType.COMPOUND))
-        buffer = nbt.getLong("buffer")
+        buffer = min(nbt.getLong("buffer"), amount)
     }
 
     override fun toNbt() = NbtCompound().apply {

@@ -1,17 +1,17 @@
 package dev.adirelle.adicrafter.crafter.impl.power
 
+import dev.adirelle.adicrafter.utils.memoize
 import net.minecraft.item.Item
 import net.minecraft.tag.ServerTagManagerHolder
 import net.minecraft.tag.Tag
 import net.minecraft.util.Identifier
 import net.minecraft.util.registry.Registry
-import java.util.*
 
 class RedstoneGenerator(
     powerPerDust: Long
-) : ItemConsumerGenerator(
-    { item -> getRedstoneValue(item).map { it * powerPerDust } }
-) {
+) : ItemConsumerGenerator(memoizedFuelMap(powerPerDust)) {
+
+    override fun hasPowerBar() = true
 
     companion object {
 
@@ -20,18 +20,15 @@ class RedstoneGenerator(
                 IllegalArgumentException("unknown tag $it")
             }
 
-        private val redstoneItems: Map<Item, Long> by lazy {
-            buildMap {
-                for (item in getItemTag("c:redstone_dusts").values()) {
-                    put(item, 1L)
-                }
-                for (item in getItemTag("c:redstone_blocks").values()) {
-                    put(item, 9L)
-                }
+        private fun createFuelMap(powerPerDust: Long) = buildMap {
+            for (item in getItemTag("c:redstone_dusts").values()) {
+                put(item, powerPerDust)
+            }
+            for (item in getItemTag("c:redstone_blocks").values()) {
+                put(item, 9 * powerPerDust)
             }
         }
 
-        private fun getRedstoneValue(item: Item): Optional<Long> =
-            Optional.ofNullable(redstoneItems[item])
+        private val memoizedFuelMap = memoize(::createFuelMap)
     }
 }

@@ -6,7 +6,7 @@ import dev.adirelle.adicrafter.crafter.api.power.PowerSource
 import dev.adirelle.adicrafter.crafter.api.storage.ResourceType
 import dev.adirelle.adicrafter.crafter.api.storage.SingleTypeStorageProvider
 import dev.adirelle.adicrafter.crafter.api.storage.StorageProvider
-import dev.adirelle.adicrafter.crafter.impl.power.DefaultSource
+import dev.adirelle.adicrafter.crafter.impl.power.BasicGenerator
 import dev.adirelle.adicrafter.crafter.impl.power.FueledGenerator
 import dev.adirelle.adicrafter.crafter.impl.power.IllimitedGenerator
 import dev.adirelle.adicrafter.crafter.impl.power.RedstoneGenerator
@@ -27,25 +27,25 @@ class CrafterFactory(
 ) {
 
     val basic: BlockFactory by lazy {
-        if (config.basic.enabled)
-            object : AbstractBlockFactory() {
-                override fun createGenerator(): PowerSource =
-                    with(config.basic) {
-                        if (usePower) DefaultSource(capacity, reloadAmount, reloadPeriod)
+        with(config.basic) {
+            if (enabled)
+                object : AbstractBlockFactory() {
+                    override fun createGenerator(): PowerSource =
+                        if (usePower) BasicGenerator(capacity, reloadRate)
                         else IllimitedGenerator
-                    }
-            }
-        else BlockFactory.Disabled
+                }
+            else BlockFactory.Disabled
+        }
     }
 
     val fueled: BlockFactory by lazy {
-        if (config.fueled.enabled)
-            object : AbstractBlockFactory() {
-                override fun createGenerator(): PowerSource =
-                    with(config.fueled) {
-                        FueledGenerator(capacity, reloadAmount, reloadPeriod)
-                    }
-            } else BlockFactory.Disabled
+        with(config.fueled) {
+            if (enabled)
+                object : AbstractBlockFactory() {
+                    override fun createGenerator(): PowerSource =
+                        FueledGenerator(capacity, reloadRate, powerPerBurningTick)
+                } else BlockFactory.Disabled
+        }
     }
 
     val redstone: BlockFactory by lazy {

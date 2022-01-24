@@ -1,27 +1,25 @@
 package dev.adirelle.adicrafter.crafter.impl.power
 
+import dev.adirelle.adicrafter.utils.memoize
 import net.minecraft.block.entity.AbstractFurnaceBlockEntity
-import java.util.*
 
 class FueledGenerator(
     capacity: Long,
-    reloadAmount: Long,
-    reloadPeriod: Long
+    reloadRate: Long,
+    powerPerBurningTick: Double
 ) : ReloadingGenerator(
     capacity,
-    reloadAmount,
-    reloadPeriod,
-    ItemConsumerGenerator(
-        { item ->
-            Optional.ofNullable(fuelTimes[item]?.toLong()?.times(reloadAmount)?.div(reloadPeriod))
-        }
-    )
+    reloadRate,
+    ItemConsumerGenerator(memoizedFuelMap(powerPerBurningTick))
 ) {
 
     companion object {
 
-        private val fuelTimes = AbstractFurnaceBlockEntity.createFuelTimeMap()
+        private val fuelBurningTimes = AbstractFurnaceBlockEntity.createFuelTimeMap()
 
+        private fun createFuelMap(powerPerBurningTick: Double) =
+            fuelBurningTimes.mapValues { (it.value * powerPerBurningTick).toLong() }
+
+        private val memoizedFuelMap = memoize(::createFuelMap)
     }
-
 }
