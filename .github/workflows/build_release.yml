@@ -28,12 +28,12 @@ jobs:
         env:
           MOD_VERSION: ${{ steps.vars.outputs.VERSION }}
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-      #
-      #      - uses: gradle/gradle-build-action@v2
-      #        with:
-      #          arguments: getChangelog -q
-      #        env:
-      #          MOD_VERSION: ${{ steps.vars.outputs.VERSION }}
+
+      - id: changelog
+        run: |
+          echo "::set-output name=CHANGELOG::$(./gradlew getChangelog -q --no-header)"
+        env:
+          MOD_VERSION: ${{ steps.vars.outputs.VERSION }}
 
       - uses: actions/upload-artifact@v2
         with:
@@ -43,6 +43,6 @@ jobs:
       - uses: softprops/action-gh-release@v1
         with:
           name: ${{ steps.vars.outputs.VERSION }}
-          body_path: CHANGELOG.md
+          body: ${{ steps.changelog.outputs.CHANGELOG }
           files: |
             build/libs/*[0-9].jar
