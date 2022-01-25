@@ -4,6 +4,20 @@
 
 ### Added
 
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+## [0.5.0] - 2022-01-25
+
+### Added
+
 * 3 new autocrafter variants:
     * the *redstone* autocrafter consumes redstone dust,
     * the *fueled* autocrafter consumes any fuel that would be accepted by a furnace,
@@ -15,14 +29,6 @@
 ### Changed
 
 * The "automated crafter" has been renamed to "basic autocrafter".
-
-### Deprecated
-
-### Removed
-
-### Fixed
-
-### Security
 
 ## [0.4.1] - 2022-01-17
 
