@@ -3,7 +3,7 @@ name: release
 on:
   push:
     tags:
-      - '*'
+      - "v*.*.*"
 
 permissions:
   contents: write
@@ -14,7 +14,7 @@ jobs:
     steps:
       - id: vars
         run: |
-          echo ::set-output name=VERSION::${GITHUB_REF#refs/*/}
+          echo ::set-output name=VERSION::${GITHUB_REF#refs/*/v}
 
       - uses: actions/checkout@v2
 
@@ -28,14 +28,21 @@ jobs:
         env:
           MOD_VERSION: ${{ steps.vars.outputs.VERSION }}
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+      #
+      #      - uses: gradle/gradle-build-action@v2
+      #        with:
+      #          arguments: getChangelog -q
+      #        env:
+      #          MOD_VERSION: ${{ steps.vars.outputs.VERSION }}
 
       - uses: actions/upload-artifact@v2
         with:
           name: adicrafter ${{ steps.vars.outputs.VERSION }}
-          path: "./build/libs/**.jar"
+          path: "build/libs/*[0-9].jar"
 
-      - uses: alexellis/upload-assets@0.2.2
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+      - uses: softprops/action-gh-release@v1
         with:
-          asset_paths: '["./build/libs/*[0-9].jar"]'
+          name: ${{ steps.vars.outputs.VERSION }}
+          body_path: CHANGELOG.md
+          files: |
+            build/libs/*[0-9].jar
