@@ -29,9 +29,8 @@ jobs:
           MOD_VERSION: ${{ steps.vars.outputs.VERSION }}
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
 
-      - id: changelog
-        run: |
-          echo "::set-output name=CHANGELOG::$(./gradlew getChangelog -q --no-header)"
+      - run: |
+          ./gradlew getChangelog -q --no-header >build/release-CHANGELOG.md
         env:
           MOD_VERSION: ${{ steps.vars.outputs.VERSION }}
 
@@ -43,6 +42,6 @@ jobs:
       - uses: softprops/action-gh-release@v1
         with:
           name: ${{ steps.vars.outputs.VERSION }}
-          body: ${{ steps.changelog.outputs.CHANGELOG }
+          body_path: build/release-CHANGELOG.md
           files: |
             build/libs/*[0-9].jar
