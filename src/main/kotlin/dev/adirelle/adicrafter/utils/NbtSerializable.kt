@@ -5,5 +5,5 @@ import net.minecraft.nbt.NbtCompound
 interface NbtSerializable {
 
     fun readFromNbt(nbt: NbtCompound) {}
-    fun toNbt(): NbtCompound = NbtCompound()
+    fun writeToNbt(nbt: NbtCompound) {}
 }

@@ -13,11 +13,11 @@ import dev.adirelle.adicrafter.crafter.impl.BufferedCrafter
 import dev.adirelle.adicrafter.crafter.impl.Grid
 import dev.adirelle.adicrafter.crafter.impl.SimulatingCrafter
 import dev.adirelle.adicrafter.utils.*
+import dev.adirelle.adicrafter.utils.extensions.*
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
-import net.fabricmc.fabric.api.util.NbtType
 import net.minecraft.block.BlockState
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.block.entity.BlockEntityType
@@ -37,7 +37,6 @@ import net.minecraft.text.TranslatableText
 import net.minecraft.util.ItemScatterer
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
-import net.minecraft.util.registry.Registry
 import net.minecraft.world.World
 
 open class CrafterBlockEntity(
@@ -60,11 +59,6 @@ open class CrafterBlockEntity(
     companion object {
 
         private val forecastUpdatePeriod by lazy { AdiCrafter.config.crafter.updatePeriod }
-
-        private const val GRID_NBT_KEY = "Grid"
-        private const val CONTENT_NBT_KEY = "Content"
-        private const val FLAGS_NBT_KEY = "Flags"
-        private const val GENERATOR_NBT_KEY = "Generator"
     }
 
     val dataAccessor: CrafterDataAccessor = DataAccessor()
@@ -114,19 +108,23 @@ open class CrafterBlockEntity(
     override fun readNbt(nbt: NbtCompound) {
         super.readNbt(nbt)
 
-        grid.readFromNbt(nbt.getList(GRID_NBT_KEY, NbtType.COMPOUND))
-        crafter.readFromNbt(nbt.getCompound(CONTENT_NBT_KEY))
-        recipeFlags = RecipeFlags.fromNbt(nbt.getInt(FLAGS_NBT_KEY))
-        powerSource.readFromNbt(nbt.getCompound(GENERATOR_NBT_KEY))
+        grid.readFromNbt(nbt)
+        recipeFlags = RecipeFlags.fromNbt(nbt.getInt(NbtKeys.FLAGS))
+
+        nbt.readInto(NbtKeys.CRAFTER, crafter)
+        nbt.readInto(NbtKeys.POWER, powerSource)
+
+        markCrafterDirty()
+        markForecastDirty()
     }
 
     override fun writeNbt(nbt: NbtCompound) {
         super.writeNbt(nbt)
 
-        nbt.put(GRID_NBT_KEY, grid.toNbt())
-        nbt.put(CONTENT_NBT_KEY, crafter.toNbt())
-        nbt.put(FLAGS_NBT_KEY, recipeFlags.toNbt())
-        nbt.put(GENERATOR_NBT_KEY, powerSource.toNbt())
+        grid.writeToNbt(nbt)
+        nbt[NbtKeys.FLAGS] = recipeFlags.toInt()
+        nbt[NbtKeys.CRAFTER] = crafter
+        nbt[NbtKeys.POWER] = powerSource
     }
 
     private fun markCrafterDirty() {
@@ -162,8 +160,14 @@ open class CrafterBlockEntity(
             addAll(crafter.getDroppedStacks())
             addAll(powerSource.getDroppedStacks())
 
-            val item = ItemStack(Registry.ITEM[id])
-            BlockItem.setBlockEntityNbt(item, type, createNbt())
+            val item = id.toStack()
+            val nbt = createNbt()
+            nbt.putItem(NbtKeys.OUTPUT, recipe.output.resource.item)
+            if (powerSource.hasPowerBar()) {
+                nbt.getCompound(NbtKeys.POWER)
+                    .putLong(NbtKeys.CAPACITY, powerSource.capacity)
+            }
+            BlockItem.setBlockEntityNbt(item, type, nbt)
             add(item)
         }
 

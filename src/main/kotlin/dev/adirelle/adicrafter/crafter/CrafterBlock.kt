@@ -2,6 +2,9 @@
 
 package dev.adirelle.adicrafter.crafter
 
+import dev.adirelle.adicrafter.utils.extensions.getItem
+import dev.adirelle.adicrafter.utils.extensions.read
+import dev.adirelle.adicrafter.utils.lazyLogger
 import net.fabricmc.fabric.api.`object`.builder.v1.block.FabricBlockSettings
 import net.fabricmc.fabric.api.block.BlockAttackInteractionAware
 import net.minecraft.block.BlockRenderType
@@ -11,17 +14,24 @@ import net.minecraft.block.Material
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.block.entity.BlockEntityTicker
 import net.minecraft.block.entity.BlockEntityType
+import net.minecraft.client.item.TooltipContext
 import net.minecraft.entity.ItemEntity
 import net.minecraft.entity.player.PlayerEntity
+import net.minecraft.item.BlockItem
 import net.minecraft.item.ItemStack
 import net.minecraft.loot.context.LootContext.Builder
 import net.minecraft.loot.context.LootContextParameters
+import net.minecraft.nbt.NbtCompound
+import net.minecraft.nbt.NbtLong
+import net.minecraft.text.Text
+import net.minecraft.text.TranslatableText
 import net.minecraft.util.ActionResult
 import net.minecraft.util.Hand
 import net.minecraft.util.hit.BlockHitResult
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Direction
 import net.minecraft.util.math.Vec3d
+import net.minecraft.world.BlockView
 import net.minecraft.world.World
 
 open class CrafterBlock(
@@ -31,6 +41,8 @@ open class CrafterBlock(
         .of(Material.METAL)
         .strength(4.0f)
 ), BlockAttackInteractionAware {
+
+    private val logger by lazyLogger
 
     override fun createBlockEntity(pos: BlockPos, state: BlockState): BlockEntity =
         blockEntityFactory(pos, state)
@@ -64,6 +76,30 @@ open class CrafterBlock(
             ?.getDroppedStacks()
             ?.toMutableList()
             ?: super.getDroppedStacks(state, builder)
+
+    override fun appendTooltip(
+        stack: ItemStack,
+        world: BlockView?,
+        tooltip: MutableList<Text>,
+        options: TooltipContext
+    ) {
+        val nbt = BlockItem.getBlockEntityNbt(stack) ?: return
+
+        nbt.getItem(NbtKeys.OUTPUT).ifPresent { output ->
+            tooltip.add(TranslatableText("tooltip.adicrafter.output", output.name))
+        }
+        nbt.read<NbtCompound>(NbtKeys.POWER) { powerNbt ->
+            powerNbt.read(NbtKeys.CAPACITY) { capacity: NbtLong ->
+                tooltip.add(
+                    TranslatableText(
+                        "tooltip.adicrafter.power",
+                        powerNbt.getLong(NbtKeys.AMOUNT),
+                        capacity.longValue(),
+                    )
+                )
+            }
+        }
+    }
 
     override fun onAttackInteraction(
         state: BlockState,

@@ -2,15 +2,17 @@
 
 package dev.adirelle.adicrafter.crafter.impl.power
 
+import dev.adirelle.adicrafter.crafter.NbtKeys
 import dev.adirelle.adicrafter.crafter.api.power.PowerSource
 import dev.adirelle.adicrafter.crafter.api.power.PowerSource.Listener
 import dev.adirelle.adicrafter.crafter.api.power.PowerVariant
 import dev.adirelle.adicrafter.utils.extensions.asStorage
 import dev.adirelle.adicrafter.utils.extensions.get
+import dev.adirelle.adicrafter.utils.extensions.getStack
+import dev.adirelle.adicrafter.utils.extensions.set
 import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 import net.fabricmc.fabric.api.transfer.v1.transaction.base.SnapshotParticipant
-import net.fabricmc.fabric.api.util.NbtType
 import net.minecraft.inventory.SimpleInventory
 import net.minecraft.item.Item
 import net.minecraft.item.ItemStack
@@ -80,13 +82,13 @@ open class ItemConsumerGenerator(
     }
 
     override fun readFromNbt(nbt: NbtCompound) {
-        inventory.readNbtList(nbt.getList("inventory", NbtType.COMPOUND))
-        buffer = min(nbt.getLong("buffer"), amount)
+        inventory.setStack(0, nbt.getStack(NbtKeys.FUEL))
+        buffer = min(nbt.getLong(NbtKeys.BUFFER), capacity)
     }
 
-    override fun toNbt() = NbtCompound().apply {
-        put("inventory", inventory.toNbtList())
-        putLong("buffer", buffer)
+    override fun writeToNbt(nbt: NbtCompound) {
+        nbt[NbtKeys.FUEL] = inventory.getStack(0)
+        nbt[NbtKeys.BUFFER] = buffer
     }
 
     override fun createSnapshot() = buffer

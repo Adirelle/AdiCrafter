@@ -2,7 +2,10 @@
 
 package dev.adirelle.adicrafter.crafter.impl
 
+import dev.adirelle.adicrafter.crafter.NbtKeys
 import dev.adirelle.adicrafter.crafter.api.Crafter
+import dev.adirelle.adicrafter.utils.extensions.getStack
+import dev.adirelle.adicrafter.utils.extensions.set
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 import net.fabricmc.fabric.api.transfer.v1.transaction.base.SnapshotParticipant
@@ -26,13 +29,13 @@ class BufferedCrafter(
 
     override fun readFromNbt(nbt: NbtCompound) {
         backing.readFromNbt(nbt)
-        buffer = ItemStack.fromNbt(nbt)
+        buffer = nbt.getStack(NbtKeys.BUFFER)
     }
 
-    override fun toNbt(): NbtCompound =
-        backing.toNbt().also {
-            buffer.writeNbt(it)
-        }
+    override fun writeToNbt(nbt: NbtCompound) {
+        backing.writeToNbt(nbt)
+        nbt[NbtKeys.BUFFER] = buffer
+    }
 
     override fun getAmount() = buffer.count.toLong()
 

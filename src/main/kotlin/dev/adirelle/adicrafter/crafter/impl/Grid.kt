@@ -2,17 +2,26 @@
 
 package dev.adirelle.adicrafter.crafter.impl
 
+import dev.adirelle.adicrafter.crafter.NbtKeys
+import dev.adirelle.adicrafter.utils.NbtSerializable
 import dev.adirelle.adicrafter.utils.areEqual
-import dev.adirelle.adicrafter.utils.extensions.toNbt
+import dev.adirelle.adicrafter.utils.extensions.add
+import dev.adirelle.adicrafter.utils.extensions.getStack
+import dev.adirelle.adicrafter.utils.extensions.read
+import dev.adirelle.adicrafter.utils.extensions.set
+import dev.adirelle.adicrafter.utils.lazyLogger
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.inventory.Inventory
 import net.minecraft.item.ItemStack
+import net.minecraft.nbt.NbtCompound
 import net.minecraft.nbt.NbtList
 
 class Grid private constructor(
     input: List<ItemStack>,
     private val onMarkedDirty: () -> Unit = {}
-) : Iterable<ItemStack>, Inventory {
+) : Iterable<ItemStack>, Inventory, NbtSerializable {
+
+    private val logger by lazyLogger
 
     companion object {
 
@@ -26,16 +35,24 @@ class Grid private constructor(
 
     private val slots = MutableList(input.size) { input[it] }
 
-    fun readFromNbt(nbt: NbtList) {
-        slots.indices.forEach { slot ->
-            slots[slot] = ItemStack.fromNbt(nbt.getCompound(slot))
+    override fun readFromNbt(nbt: NbtCompound) {
+        nbt.read<NbtList>(NbtKeys.GRID) { items ->
+            slots.indices.forEach { index ->
+                slots[index] = items.getStack(index)
+            }
+            return
         }
+        clear()
     }
 
-    fun toNbt() =
-        NbtList().apply {
-            slots.forEach { slot -> add(slot.toNbt()) }
+    override fun writeToNbt(nbt: NbtCompound) {
+        if (isEmpty) return
+        nbt[NbtKeys.GRID] = NbtList().apply {
+            slots.forEach { stack ->
+                add(stack.item)
+            }
         }
+    }
 
     fun asList(): List<ItemStack> =
         slots

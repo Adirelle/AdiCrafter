@@ -2,9 +2,11 @@
 
 package dev.adirelle.adicrafter.crafter.impl.power
 
+import dev.adirelle.adicrafter.crafter.NbtKeys
 import dev.adirelle.adicrafter.crafter.api.power.PowerSource
 import dev.adirelle.adicrafter.crafter.api.power.PowerSource.Listener
 import dev.adirelle.adicrafter.crafter.api.power.PowerVariant
+import dev.adirelle.adicrafter.utils.extensions.set
 import dev.adirelle.adicrafter.utils.withOuterTransaction
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext
 import net.fabricmc.fabric.api.transfer.v1.transaction.base.SnapshotParticipant
@@ -68,12 +70,12 @@ open class ReloadingGenerator(
     }
 
     override fun readFromNbt(nbt: NbtCompound) {
-        _amount = min(nbt.getLong("amount"), _capacity)
         source.readFromNbt(nbt)
+        _amount = min(nbt.getLong(NbtKeys.AMOUNT), _capacity)
     }
 
-    override fun toNbt(): NbtCompound =
-        source.toNbt().apply {
-            putLong("amount", _amount)
-        }
+    override fun writeToNbt(nbt: NbtCompound) {
+        source.writeToNbt(nbt)
+        nbt[NbtKeys.AMOUNT] = _amount
+    }
 }
