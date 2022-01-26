@@ -41,7 +41,6 @@ class CrafterImpl(
         val available = withNestedTransaction(tx) { nested ->
             val (exact, crafted) = craftInternal(maxAmount, nested)
             if (exact) {
-                tx.addOuterCloseCallback(this)
                 nested.commit()
                 return crafted
             }
@@ -73,6 +72,9 @@ class CrafterImpl(
             val extracted = ingredient.extractFrom(storageProvider, ingredient.amount * maxBatchs, tx)
             craftedBatchs = min(craftedBatchs, extracted / ingredient.amount)
             if (craftedBatchs == 0L) break
+        }
+        if (craftedBatchs > 0) {
+            tx.addOuterCloseCallback(this)
         }
         return Pair(craftedBatchs == maxBatchs, amount * craftedBatchs)
     }
