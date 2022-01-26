@@ -4,7 +4,6 @@ package dev.adirelle.adicrafter.crafter
 
 import dev.adirelle.adicrafter.utils.extensions.getItem
 import dev.adirelle.adicrafter.utils.extensions.read
-import dev.adirelle.adicrafter.utils.lazyLogger
 import net.fabricmc.fabric.api.`object`.builder.v1.block.FabricBlockSettings
 import net.fabricmc.fabric.api.block.BlockAttackInteractionAware
 import net.minecraft.block.BlockRenderType
@@ -41,8 +40,6 @@ open class CrafterBlock(
         .of(Material.METAL)
         .strength(4.0f)
 ), BlockAttackInteractionAware {
-
-    private val logger by lazyLogger
 
     override fun createBlockEntity(pos: BlockPos, state: BlockState): BlockEntity =
         blockEntityFactory(pos, state)
