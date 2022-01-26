@@ -8,7 +8,7 @@ import net.fabricmc.loader.api.FabricLoader
 
 @Serializable
 data class Config(
-    val version: Int = 0,
+    val version: Int = CURRENT_VERSION,
     val crafter: CrafterConfig = CrafterConfig()
 ) {
 
@@ -31,17 +31,17 @@ data class Config(
         private fun load(): Config =
             try {
                 json.decodeFromString<Config>(configFile.readText()).also {
-                    LOGGER.info("configuration loaded from file")
+                    LOGGER.info("Configuration loaded from file")
                 }
             } catch (t: Throwable) {
-                LOGGER.warn("could not read configuration file", t)
+                LOGGER.warn("Could not read configuration file", t)
                 Config()
             }
 
         fun loadOrCreate(): Config {
             var config = if (configFile.exists()) load() else Config()
             if (config.version < CURRENT_VERSION) {
-                LOGGER.warn("loaded previous version of configuration, reseting to default")
+                LOGGER.warn("Ignoring previous version of configuration, reset to default")
                 config = Config()
             }
             config.save()
@@ -54,7 +54,7 @@ data class Config(
             val content = json.encodeToString(serializer(), this)
             configFile.writeText(content)
         } catch (t: Throwable) {
-            LOGGER.warn("could not write configuration file", t)
+            LOGGER.warn("Could not write configuration file", t)
         }
     }
 }

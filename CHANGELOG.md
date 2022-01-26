@@ -12,6 +12,8 @@
 
 ### Fixed
 
+* Configuration reset on every reload.
+
 ### Security
 
 ## [0.5.0] - 2022-01-25
