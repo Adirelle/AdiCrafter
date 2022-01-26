@@ -6,6 +6,8 @@
 
 ### Changed
 
+* The autocrafters are easier to break.
+
 ### Deprecated
 
 ### Removed

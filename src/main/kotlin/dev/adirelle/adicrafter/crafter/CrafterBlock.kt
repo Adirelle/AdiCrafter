@@ -38,7 +38,7 @@ open class CrafterBlock(
 ) : BlockWithEntity(
     FabricBlockSettings
         .of(Material.METAL)
-        .strength(4.0f)
+        .strength(2.0f)
 ), BlockAttackInteractionAware {
 
     override fun createBlockEntity(pos: BlockPos, state: BlockState): BlockEntity =
