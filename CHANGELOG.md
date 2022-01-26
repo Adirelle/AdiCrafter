@@ -14,9 +14,17 @@
 
 ### Fixed
 
-* Configuration reset on every reload.
-
 ### Security
+
+## [0.5.1] - 2022-01-26
+
+### Changed
+
+* The autocrafters are easier to break.
+
+### Fixed
+
+* Configuration reset on every reload.
 
 ## [0.5.0] - 2022-01-25
 
